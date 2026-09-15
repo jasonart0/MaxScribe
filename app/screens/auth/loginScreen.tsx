@@ -3,7 +3,6 @@ import { CustomButton, CustomInput, ScreenWrapper } from "@components";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import {
   faildMessage,
-  getMD5Hash,
   isNotEmpty,
   setHeight,
   setWidth,
@@ -24,8 +23,8 @@ import {
   View,
 } from "react-native";
 export default function LoginScreen({ navigation }: any) {
-  const [id, setId] = useState("Admin@maximus");
-  const [password, setPassword] = useState("Maxi@321");
+  const [id, setId] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isBioLoading, setIsBioLoading] = useState(false);
   const [supportsBiometric, setSupportsBiometric] = useState(false);
@@ -65,6 +64,7 @@ export default function LoginScreen({ navigation }: any) {
   //   }
   // };
   const handleLogin = async () => {
+    console.info("[Login] Button pressed");
     let hasError = false;
 
     if (!isNotEmpty(id)) {
@@ -82,26 +82,27 @@ export default function LoginScreen({ navigation }: any) {
     }
 
     if (hasError) {
+      faildMessage("Please enter your user ID and password");
       return; // ✅ Stop if validation failed
     }
 
     setIsLoading(true);
     try {
-      const pas = await getMD5Hash(password.trim());
-
-      const result = await loginUser(id.toLowerCase().trim(), pas);
+      const result = await loginUser(id.trim(), password);
 
       if (result.success) {
         successMessage("Login Successful");
         navigation.replace("Home");
-      } else if (!result.success && result.message === "Unauthorized") {
-        faildMessage("User ID or password may incorect");
       } else {
-        // alert("Login Failed", result.message);
-        faildMessage("Somthing went wrong. Try agin later");
+        faildMessage(result.message || "Login failed. Please try again.");
       }
     } catch (error) {
-      console.log(error);
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to start the login request.";
+      console.error("[Login] Unexpected login error", error);
+      faildMessage(message);
     } finally {
       setIsLoading(false);
     }
@@ -130,7 +131,7 @@ export default function LoginScreen({ navigation }: any) {
           setIsBioLoading(false);
           faildMessage("Somthing went wrong. Try agin later");
         }
-      } catch (error) {
+      } catch {
         setIsBioLoading(false);
         faildMessage("Somthing went wrong. Try agin later");
       }
@@ -201,6 +202,8 @@ export default function LoginScreen({ navigation }: any) {
             secureTextEntry
             required={passwordError}
             showPasswordToggle
+            returnKeyType="go"
+            onSubmitEditing={handleLogin}
           />
 
           {/* Button */}

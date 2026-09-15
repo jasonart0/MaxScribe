@@ -1,8 +1,30 @@
 import { Ionicons } from "@expo/vector-icons"; // Expo users
 import React, { useEffect, useState } from "react";
-import { StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
+import {
+  StyleProp,
+  StyleSheet,
+  TextInput,
+  TextInputProps,
+  TouchableOpacity,
+  View,
+  ViewStyle,
+} from "react-native";
 // For CLI without Expo: use `react-native-vector-icons/Ionicons`
 import { COLORS } from "constants/Colors";
+
+type CustomInputProps = Pick<
+  TextInputProps,
+  | "placeholder"
+  | "value"
+  | "onChangeText"
+  | "secureTextEntry"
+  | "returnKeyType"
+  | "onSubmitEditing"
+> & {
+  showPasswordToggle?: boolean;
+  style?: StyleProp<ViewStyle>;
+  required?: boolean;
+};
 
 const CustomInput = ({
   placeholder,
@@ -11,8 +33,10 @@ const CustomInput = ({
   secureTextEntry,
   showPasswordToggle,
   style,
-  required = false, // ✅ new prop
-}) => {
+  required = false,
+  returnKeyType,
+  onSubmitEditing,
+}: CustomInputProps) => {
   const [isPasswordVisible, setIsPasswordVisible] = useState(
     secureTextEntry || false
   );
@@ -36,7 +60,7 @@ const CustomInput = ({
         placeholder={placeholder}
         value={value}
         onChangeText={(text) => {
-          onChangeText(text);
+          onChangeText?.(text);
           if (required) {
             setIsError(text.trim() === "");
           }
@@ -44,6 +68,8 @@ const CustomInput = ({
         secureTextEntry={isPasswordVisible}
         style={styles.input}
         placeholderTextColor="#999"
+        returnKeyType={returnKeyType}
+        onSubmitEditing={onSubmitEditing}
       />
 
       {showPasswordToggle && (

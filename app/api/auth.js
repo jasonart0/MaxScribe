@@ -1,12 +1,14 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import dayjs from "dayjs";
 import { saveUserData } from "lib/authdata";
 import axios from "./axiosInstance";
 
 export const loginUser = async (username, password) => {
   try {
+    console.info("[Auth] Sending login request");
     const response = await axios.post("/auth/token", {
       app: "EHR",
-      client_time_stamp: new Date().toISOString(),
+      client_time_stamp: dayjs().format("YYYY-MM-DD HH:mm:ss.SSS"),
       username,
       password,
     });
@@ -28,10 +30,22 @@ export const loginUser = async (username, password) => {
     return { success: true, token }; // return token for immediate use
   } catch (error) {
     // console.error("❌ Login error:", error?.response?.data || error.message);
+    const responseData = error?.response?.data;
+    const message =
+      responseData?.response ||
+      responseData?.message ||
+      error?.message ||
+      "Login failed. Check credentials.";
+
+    console.error("[Auth] Login request failed", {
+      status: error?.response?.status,
+      message,
+    });
+
     return {
       success: false,
-      message:
-        error?.response?.data?.message || "Login failed. Check credentials.",
+      status: error?.response?.status,
+      message,
     };
   }
 };

@@ -24,7 +24,7 @@ interface ScreenWrapperProps {
   containerViewStyle?: object;
   contentContainerStyle?: object;
   headerUnScrollable?: (t: any, s: any) => ReactNode;
-  title: string;
+  title?: string;
   showback?: boolean;
   footerUnScrollable?: () => ReactNode;
   backgroundColor?: string;
