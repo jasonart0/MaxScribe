@@ -1,8 +1,27 @@
-import {
-  ExpoSpeechRecognitionModule,
-  useSpeechRecognitionEvent,
-} from "expo-speech-recognition";
 import { useState } from "react";
+
+type SpeechRecognitionModule = {
+  start: (options: Record<string, unknown>) => Promise<void>;
+  stop: () => Promise<void>;
+};
+
+type SpeechRecognitionEventHook = (
+  event: string,
+  listener: (payload: any) => void
+) => void;
+
+let ExpoSpeechRecognitionModule: SpeechRecognitionModule | null = null;
+let useSpeechRecognitionEvent: SpeechRecognitionEventHook = () => {};
+
+try {
+  // The native module is unavailable in Expo Go until a development build is rebuilt.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const speechRecognition = require("expo-speech-recognition");
+  ExpoSpeechRecognitionModule = speechRecognition.ExpoSpeechRecognitionModule;
+  useSpeechRecognitionEvent = speechRecognition.useSpeechRecognitionEvent;
+} catch {
+  // Keep the rest of the app usable without native speech recognition.
+}
 
 function useVoice() {
   const [started, setStarted] = useState(false);
@@ -15,8 +34,6 @@ function useVoice() {
   useSpeechRecognitionEvent("end", () => setStarted(false));
   useSpeechRecognitionEvent("error", (event) => {
     setError(event.error);
-    // auto-restart if needed
-    _startRecognizing();
   });
   useSpeechRecognitionEvent("result", (event) => {
     if (event.results?.length) {
@@ -33,6 +50,10 @@ function useVoice() {
   // 🔹 Start recognition
   const _startRecognizing = async () => {
     _clearState();
+    if (!ExpoSpeechRecognitionModule) {
+      setError("Speech recognition is unavailable in this app build.");
+      return;
+    }
     try {
       await ExpoSpeechRecognitionModule.start({
         lang: "en-US",
@@ -48,7 +69,7 @@ function useVoice() {
   const _stopRecognizing = async () => {
     try {
       setFinalResult(results);
-      await ExpoSpeechRecognitionModule.stop();
+      await ExpoSpeechRecognitionModule?.stop();
       setFinalResult("");
       _clearState();
     } catch (e) {
@@ -59,8 +80,8 @@ function useVoice() {
   // 🔹 Destroy (not strictly needed in Expo, but useful to reset)
   const _destroyRecognizer = async () => {
     try {
-      await ExpoSpeechRecognitionModule.stop();
-    } catch (e) {}
+      await ExpoSpeechRecognitionModule?.stop();
+    } catch {}
     _clearState();
   };
 

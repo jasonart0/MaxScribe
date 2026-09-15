@@ -1,111 +1,186 @@
-import { FontAwesome, Ionicons } from "@expo/vector-icons";
-import { setHeight, setWidth } from "@lib";
-import { COLORS } from "constants/Colors";
+import { Ionicons } from "@expo/vector-icons";
+import { baseURL } from "constants/base";
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import AvatarInitials from "./Avatar";
-const PatientCard = ({ patient, onCallPress, onViewPress }) => {
+
+const TEAL = "#12BDB5";
+
+type Patient = {
+  name?: string;
+  patient_status?: string;
+  dob?: string;
+  pic?: string;
+  cell_phone?: string;
+  home_phone?: string;
+  alternate_account?: string | number;
+  patient_id?: string | number;
+};
+
+type PatientCardProps = {
+  patient: Patient;
+  onCallPress: () => void;
+  onViewPress: () => void;
+};
+
+const PatientCard = ({
+  patient,
+  onCallPress,
+  onViewPress,
+}: PatientCardProps) => {
+  const safePatient = patient || {};
+  const status = safePatient.patient_status || "Patient";
+  const dateOfBirth = safePatient.dob || "--";
+  const phone = safePatient.cell_phone || safePatient.home_phone || "No phone";
+  const account = safePatient.alternate_account || safePatient.patient_id || "--";
+  const imageUri = typeof safePatient.pic === "string" && safePatient.pic
+    ? safePatient.pic.startsWith("http")
+      ? safePatient.pic
+      : `${baseURL}/${safePatient.pic.replace(/^\//, "")}`
+    : null;
 
   return (
-    <View
-      style={{
-        backgroundColor: "#fff",
-        borderRadius: 12,
-        padding: 12,
-        marginVertical: 8,
-        shadowColor: "#4a4a4aff",
-        shadowOpacity: 0.1,
-        shadowOffset: { width: 1, height: 2 },
-        shadowRadius: 5,
-        elevation: 2,
-      }}
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`View ${safePatient.name || "patient"}`}
+      onPress={onViewPress}
+      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
-      <View style={styles.card}>
-        {/* {patient.pic ? (
-        <Image source={{ uri: "https://ehr.maximus.care/pre.prod.maximus/"+patient.pic }} style={styles.avatar} />
-      ) :*/}
-        <AvatarInitials name={patient.name} size={setHeight(6)} />
-        {/* <Icon
-          name={patient.gender_code == "F" ? "femaleIcon" : "maleIcon"}
-          height={setHeight(6)}
-          width={setHeight(6)}
-          iconColor={COLORS.primary}
-        /> */}
-        <View style={{ flex: 1, marginLeft: 10, rowGap: 5 }}>
-          <Text style={styles.name}>{patient.name}</Text>
-          <Text style={styles.date}>{patient.dob}</Text>
-          <Text style={styles.reason}>{patient.patient_status}</Text>
+      <AvatarInitials
+        name={safePatient.name}
+        imageUri={imageUri}
+        size={62}
+        rounded={false}
+        color={TEAL}
+        style={styles.avatar}
+      />
+
+      <View style={styles.details}>
+        <Text style={styles.name} numberOfLines={1}>
+          {safePatient.name || "Unknown patient"}
+        </Text>
+        <Text style={styles.status} numberOfLines={1}>
+          {status}
+        </Text>
+        <Text style={styles.type} numberOfLines={1}>
+          DOB: {dateOfBirth}
+        </Text>
+      </View>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Record patient session"
+        hitSlop={8}
+        onPress={(event) => {
+          event.stopPropagation();
+          onCallPress();
+        }}
+        style={({ pressed }) => [styles.recordButton, pressed && styles.recordPressed]}
+      >
+        <Ionicons name="mic" size={19} color="#12BDB5" />
+      </Pressable>
+
+      <View style={styles.meta}>
+        <View style={[styles.metaRow, styles.phoneMetaRow]}>
+          <Ionicons name="call-outline" size={15} color="#718096" />
+          <Text style={styles.metaText} numberOfLines={1}>{phone}</Text>
+        </View>
+        <View style={styles.metaRow}>
+          <Ionicons name="id-card-outline" size={15} color="#718096" />
+          <Text style={styles.metaText} numberOfLines={1}>ID {account}</Text>
         </View>
       </View>
-      <View style={styles.actions}>
-        <TouchableOpacity style={styles.iconBtn} onPress={onCallPress}>
-          <FontAwesome name="microphone" size={setHeight(2)} color={COLORS.primary} />
-          <Text style={styles.date}>Record Session</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.iconBtn, { backgroundColor: "#F1F5F9" }]}
-          onPress={onViewPress}
-        >
-          <Ionicons name="eye-outline" size={setHeight(2)} color="#000000ff" />
-          <Text style={styles.date}>View Summary</Text>
-        </TouchableOpacity>
-      </View>
-      {/* <View style={styles.locationRow}>
-        <Ionicons name="location-outline" size={14} color="#666" />
-        <Text style={styles.location}>{patient.address}</Text>
-      </View> */}
-    </View>
+    </Pressable>
   );
 };
 
 const styles = StyleSheet.create({
   card: {
+    minHeight: 100,
+    padding: 14,
+    paddingBottom: 0,
+    borderRadius: 14,
     flexDirection: "row",
+    alignItems: "flex-start",
+    flexWrap: "wrap",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#C9DDE0",
+    shadowColor: "#7A9195",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  pressed: {
+    opacity: 0.84,
   },
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    borderRadius: 10,
+    backgroundColor: "#E7F7F5",
+  },
+  details: {
+    flex: 1,
+    minWidth: 0,
+    paddingLeft: 12,
+    paddingRight: 8,
+    paddingTop: 4,
   },
   name: {
-    fontWeight: "bold",
-    fontSize: 16,
+    color: "#17213D",
+    fontSize: 15,
+    fontWeight: "600",
+    letterSpacing: 0.3,
   },
-  date: {
+  status: {
     fontSize: 12,
-    color: "#666",
+    fontWeight: "400",
+    marginTop: 4,
+    color: "#52636B",
   },
-  reason: {
-    fontSize: 13,
-    color: COLORS.primary,
-    marginTop: 2,
+  type: {
+    fontSize: 11,
+    marginTop: 4,
+    color: "#52636B",
   },
-  locationRow: {
+  meta: {
+    width: "100%",
+    minHeight: 42,
+    marginTop: 12,
+    paddingHorizontal: 0,
+    paddingBottom: 0,
+    borderTopWidth: 1,
+    borderTopColor: "#d9e9eb",
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 5,
+    justifyContent: "space-between",
+    backgroundColor: "transparent",
   },
-  location: {
-    fontSize: 12,
-    color: "#666",
-    marginLeft: 3,
-  },
-  actions: {
+  metaRow: {
     flexDirection: "row",
-    gap: 10,
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 5,
+    flex: 1,
+  },
+  phoneMetaRow: {
+    justifyContent: "flex-start",
+  },
+  metaText: {
+    color: "#52636B",
+    fontSize: 11,
+    textAlign: "right",
+  },
+  recordButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
     justifyContent: "center",
-    alignItems: "center",
+    backgroundColor: "#E7F7F5",
   },
-  iconBtn: {
-    flexDirection: "row",
-    gap: setHeight(1),
-    padding: setHeight(1),
-    margin: setHeight(0.5),
-    width: setWidth(40),
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#D5FBE6",
-    borderRadius: setHeight(0.8),
+  recordPressed: {
+    opacity: 0.7,
   },
 });
 

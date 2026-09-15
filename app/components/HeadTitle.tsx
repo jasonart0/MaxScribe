@@ -1,8 +1,8 @@
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-import { MaterialIcons } from "@expo/vector-icons";
-import { setHeight, setWidth } from "@lib";
+import { Ionicons } from "@expo/vector-icons";
+import { setHeight } from "@lib";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
 import { COLORS } from "constants/Colors";
@@ -13,29 +13,24 @@ const HeaderTitle = ({ title = "", showback = true, showlogout = true }) => {
     <View style={styles.topBar}>
       {showback ? (
         <TouchableOpacity
-          style={styles.backBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          style={styles.actionButton}
           onPress={() => navigation.goBack()}
         >
-          <MaterialIcons name="arrow-back-ios" size={24} color="black" />
+          <Ionicons name="arrow-back" size={27} color={COLORS.deep} />
         </TouchableOpacity>
       ) : (
-        <View />
+        <View style={styles.actionButton} />
       )}
-      <Text
-        style={{
-          color: COLORS.primary,
-          fontSize: setHeight(2),
-          fontWeight: "600",
-          marginLeft: 16,
-          alignSelf: "center",
-          width:setWidth(64),
-        }}
-      >
+      <Text style={styles.title} numberOfLines={1}>
         {title || "Patient"}
       </Text>
       {showlogout ? (
         <TouchableOpacity
-          style={styles.backBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Log out"
+          style={styles.actionButton}
           onPress={async () => {
             await AsyncStorage.setItem("token", "");
             await saveUserData("", "", "", "");
@@ -45,10 +40,10 @@ const HeaderTitle = ({ title = "", showback = true, showlogout = true }) => {
             });
           }}
         >
-          <MaterialIcons name="logout" size={setHeight(2.5)} color="black" />
+          <Ionicons name="log-out-outline" size={setHeight(2.8)} color={COLORS.deep} />
         </TouchableOpacity>
       ) : (
-        <View />
+        <View style={styles.actionButton} />
       )}
     </View>
   );
@@ -56,20 +51,24 @@ const HeaderTitle = ({ title = "", showback = true, showlogout = true }) => {
 const styles = StyleSheet.create({
   topBar: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: setHeight(2),
-    paddingVertical: setHeight(1),
+    height: 64,
+    paddingHorizontal: 16,
     backgroundColor: COLORS.background,
   },
-  backBtn: {
-    borderRadius: 50,
-    padding: 12,
-    backgroundColor: "white",
+  actionButton: {
+    width: 42,
+    height: 42,
     alignItems: "center",
     justifyContent: "center",
-    alignContent: "center",
   },
-  backIcon: { width: 18, height: 18, tintColor: "#FFF" },
+  title: {
+    flex: 1,
+    color: COLORS.deep,
+    fontSize: 19,
+    fontWeight: "700",
+    textAlign: "center",
+    letterSpacing: 0.2,
+  },
 });
 export default HeaderTitle;

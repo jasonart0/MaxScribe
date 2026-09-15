@@ -1,30 +1,30 @@
 import { localImages } from "@assets";
 import { CustomButton, CustomInput, ScreenWrapper } from "@components";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import {
-  faildMessage,
-  isNotEmpty,
-  setHeight,
-  setWidth,
-  successMessage,
-} from "@lib";
+import { Ionicons } from "@expo/vector-icons";
+import { faildMessage, isNotEmpty, successMessage } from "@lib";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { loginUser } from "api/auth";
-import { COLORS } from "constants/Colors";
 import { useLocalAuth } from "hooks/useLocalAuth";
 import { getUserData } from "lib/authdata";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Image,
   Modal,
+  Pressable,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
+
+const TEAL = "#12BDB5";
+const INK = "#17213D";
+
 export default function LoginScreen({ navigation }: any) {
   const [id, setId] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [isBioLoading, setIsBioLoading] = useState(false);
   const [supportsBiometric, setSupportsBiometric] = useState(false);
@@ -33,6 +33,7 @@ export default function LoginScreen({ navigation }: any) {
   const [biometricType, setBiometricType] = useState("face");
   const { checkHardware, checkEnrolled, authenticate, getType } =
     useLocalAuth();
+
   useEffect(() => {
     (async () => {
       const compatible = await checkHardware();
@@ -46,213 +47,188 @@ export default function LoginScreen({ navigation }: any) {
           isNotEmpty(user?.username)
       );
     })();
+    // These helpers are intentionally checked once when the login screen mounts.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  // const handleLogin = async () => {
-  //   setIsLoading(true);
-  //   try {
-  //     const result = await loginUser(id.toLowerCase(), password);
-  //     if (result.success) {
-  //       successMessage("Login Successful", "Welcome back!");
-  //       navigation.replace("Home");
-  //     } else {
-  //       Alert.alert("Login Failed", result.message);
-  //     }
-  //   } catch (error) {
-  //     console.log(error);
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
+
   const handleLogin = async () => {
-    console.info("[Login] Button pressed");
-    let hasError = false;
+    const missingId = !isNotEmpty(id);
+    const missingPassword = !isNotEmpty(password);
+    setIdError(missingId);
+    setPasswordError(missingPassword);
 
-    if (!isNotEmpty(id)) {
-      setIdError(true);
-      hasError = true;
-    } else {
-      setIdError(false);
-    }
-
-    if (!isNotEmpty(password)) {
-      setPasswordError(true);
-      hasError = true;
-    } else {
-      setPasswordError(false);
-    }
-
-    if (hasError) {
+    if (missingId || missingPassword) {
       faildMessage("Please enter your user ID and password");
-      return; // ✅ Stop if validation failed
+      return;
     }
 
     setIsLoading(true);
     try {
       const result = await loginUser(id.trim(), password);
-
-      if (result.success) {
-        successMessage("Login Successful");
-        navigation.replace("Home");
-      } else {
+      if (!result.success) {
         faildMessage(result.message || "Login failed. Please try again.");
+        return;
       }
+
+      if (!rememberMe) {
+        await AsyncStorage.removeItem("userdata");
+      }
+      successMessage("Login Successful");
+      navigation.replace("Home");
     } catch (error) {
       const message =
-        error instanceof Error
-          ? error.message
-          : "Unable to start the login request.";
-      console.error("[Login] Unexpected login error", error);
+        error instanceof Error ? error.message : "Unable to log in right now.";
       faildMessage(message);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleBA = async () => {
-    const a = await authenticate();
+  const handleBiometricLogin = async () => {
+    const authenticated = await authenticate();
     const user = await getUserData();
-    if (!isNotEmpty(user)) {
-      return;
-    }
-    if (a && isNotEmpty(user)) {
-      setIsBioLoading(true);
-      try {
-        const result = await loginUser(
-          user?.username?.toLowerCase().trim(),
-          user?.password.trim()
-        );
-        if (result.success) {
-          setIsBioLoading(false);
-          successMessage("Login Successful");
-          navigation.replace("Home");
-        } else {
-          // alert("Login Failed", result?.message);
-          faildMessage("Somthing went wrong try again");
-          setIsBioLoading(false);
-          faildMessage("Somthing went wrong. Try agin later");
-        }
-      } catch {
-        setIsBioLoading(false);
-        faildMessage("Somthing went wrong. Try agin later");
+    if (!authenticated || !isNotEmpty(user)) return;
+
+    setIsBioLoading(true);
+    try {
+      const result = await loginUser(
+        user?.username?.trim(),
+        user?.password || ""
+      );
+      if (result.success) {
+        successMessage("Login Successful");
+        navigation.replace("Home");
+      } else {
+        faildMessage(result.message || "Biometric login failed.");
       }
+    } catch {
+      faildMessage("Biometric login is unavailable. Please log in manually.");
+    } finally {
+      setIsBioLoading(false);
     }
   };
+
   return (
-    <ScreenWrapper scrollEnabled headerUnScrollable={() => <></>}>
+    <ScreenWrapper
+      scrollEnabled
+      showback={false}
+      headerUnScrollable={() => null}
+      backgroundColor="#F5F7FC"
+      statusBarColor="#F5F7FC"
+      contentContainerStyle={styles.scrollContent}
+    >
       <View style={styles.container}>
-        {/* Logo */}
-        <Image
-          source={localImages.logo} // Replace with your logo
-          style={styles.logo}
-        />
-        <Text
-          style={{
-            alignSelf: "center",
-            fontSize: setHeight(4),
-            fontWeight: "bold",
-            color: COLORS.primary,
-            marginBottom: setHeight(5),
-            marginTop: setHeight(2),
-          }}
-        >
-          MaxScribe
-        </Text>
-        <View
-          style={{
-            backgroundColor: "white",
-            width: setWidth(90),
-            alignContent: "center",
-            justifyContent: "center",
-            alignItems: "center",
-            padding: setHeight(2),
-            borderRadius: setHeight(3),
-            shadowColor: "#4a4a4aff",
-            shadowOpacity: 0.1,
-            shadowOffset: { width: 1, height: 2 },
-            shadowRadius: 5,
-            elevation: 2,
-          }}
-        >
-          <Text
-            style={{
-              alignSelf: "center",
-              fontSize: setHeight(3),
-              fontWeight: "700",
-              color: COLORS.primary,
-              marginBottom: setHeight(2),
-              marginTop: setHeight(5),
-            }}
-          >
-            Welcome!
+        <View style={styles.decorativeCircle} />
+
+        <View style={styles.brandBlock}>
+          <View style={styles.logoBox}>
+            <Image source={localImages.logo} style={styles.logo} />
+          </View>
+          <Text style={styles.title}>Log in</Text>
+          <Text style={styles.subtitle}>
+            Welcome back! Please log in{"\n"}to continue.
           </Text>
-          {/* Inputs */}
+        </View>
+
+        <View style={styles.form}>
+          <Text style={styles.label}>User ID</Text>
           <CustomInput
-            placeholder="Type your Id here"
+            placeholder="Enter your user ID"
             value={id}
             style={styles.input}
             onChangeText={setId}
             required={idError}
+            leftIcon={<Ionicons name="person-outline" size={20} color="#8992A7" />}
+            returnKeyType="next"
           />
 
+          <Text style={[styles.label, styles.passwordLabel]}>Password</Text>
           <CustomInput
-            placeholder="Password"
+            placeholder="Enter your password"
             value={password}
             style={styles.input}
             onChangeText={setPassword}
             secureTextEntry
             required={passwordError}
             showPasswordToggle
+            iconColor="#8992A7"
+            leftIcon={<Ionicons name="lock-closed-outline" size={20} color="#8992A7" />}
             returnKeyType="go"
             onSubmitEditing={handleLogin}
           />
 
-          {/* Button */}
+          <View style={styles.optionsRow}>
+            <Pressable
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: rememberMe }}
+              onPress={() => setRememberMe((value) => !value)}
+              style={styles.rememberButton}
+            >
+              <View style={[styles.checkbox, rememberMe && styles.checkboxOn]}>
+                {rememberMe ? (
+                  <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                ) : null}
+              </View>
+              <Text style={styles.optionText}>Remember me</Text>
+            </Pressable>
+            <Pressable
+              onPress={() =>
+                Alert.alert(
+                  "Forgot password?",
+                  "Please contact your practice administrator to reset your password."
+                )
+              }
+            >
+              <Text style={styles.forgotText}>Forgot password?</Text>
+            </Pressable>
+          </View>
+
           <CustomButton
             isLoading={isLoading}
-            title="Login"
+            title="Sign in"
             onPress={handleLogin}
-            style={styles.button}
-            textStyle={undefined}
+            style={styles.signInButton}
+            textStyle={styles.signInText}
           />
-          {supportsBiometric && (
+
+          {supportsBiometric ? (
             <>
-              <Text style={styles.orText}>OR</Text>
-              {biometricType && (
-                <TouchableOpacity
-                  disabled={isBioLoading || isLoading}
-                  style={styles.biometricBtn}
-                  onPress={handleBA}
-                >
-                  {biometricType === "face" ? (
-                    <MaterialCommunityIcons
-                      name="face-recognition"
-                      size={setHeight(2)}
-                      color="#fff"
-                    />
-                  ) : (
-                    <Ionicons
-                      name="finger-print"
-                      size={setHeight(2)}
-                      color="#fff"
-                    />
-                  )}
-                  <Text style={styles.biometricText}>
-                    {biometricType === "face"
-                      ? "Login with Face ID"
-                      : "Login with Fingerprint"}
-                  </Text>
-                </TouchableOpacity>
-              )}
+              <View style={styles.dividerRow}>
+                <View style={styles.divider} />
+                <Text style={styles.dividerText}>Or continue with</Text>
+                <View style={styles.divider} />
+              </View>
+              <Pressable
+                disabled={isBioLoading || isLoading}
+                onPress={handleBiometricLogin}
+                style={({ pressed }) => [
+                  styles.biometricButton,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Ionicons
+                  name={
+                    biometricType === "face"
+                      ? "scan-outline"
+                      : "finger-print-outline"
+                  }
+                  size={22}
+                  color={TEAL}
+                />
+                <Text style={styles.biometricText}>
+                  Continue with {biometricType === "face" ? "Face ID" : "Fingerprint"}
+                </Text>
+              </Pressable>
             </>
-          )}
-          <Text style={styles.forgot}>Forget Password?</Text>
+          ) : null}
         </View>
       </View>
-      <Modal animationType="fade" transparent={true} visible={isBioLoading}>
+
+      <Modal animationType="fade" transparent visible={isBioLoading}>
         <View style={styles.backdrop}>
           <View style={styles.loaderBox}>
-            <ActivityIndicator size="large" color={COLORS.primary} />
-            <Text style={styles.text}>Loading</Text>
+            <ActivityIndicator size="large" color={TEAL} />
+            <Text style={styles.loaderText}>Signing in...</Text>
           </View>
         </View>
       </Modal>
@@ -261,75 +237,174 @@ export default function LoginScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
+  scrollContent: {
+    flexGrow: 1,
+  },
   container: {
-    // flex: 1,
-    justifyContent: "center",
+    flex: 1,
+    minHeight: 700,
+    paddingHorizontal: 18,
+    paddingTop: 30,
+    backgroundColor: "#F5F7FC",
+    overflow: "hidden",
+  },
+  decorativeCircle: {
+    position: "absolute",
+    width: 215,
+    height: 215,
+    borderRadius: 108,
+    right: -92,
+    top: -112,
+    backgroundColor: "#E8FAFA",
+  },
+  brandBlock: {
     alignItems: "center",
+    marginTop: 22,
+  },
+  logoBox: {
+    width: 82,
+    height: 82,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    backgroundColor: "#DDF8F1",
   },
   logo: {
-    width: setHeight(17),
-    height: setHeight(17),
-    marginBottom: 15,
-    resizeMode: "contain",
+    width: 82,
+    height: 82,
+    resizeMode: "cover",
   },
   title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: COLORS.primary,
+    color: INK,
+    fontSize: 28,
+    fontWeight: "700",
+    marginTop: 15,
   },
-  welcome: {
-    fontSize: 18,
-    marginVertical: 10,
-    color: COLORS.primary,
+  subtitle: {
+    color: "#7B849D",
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: "center",
+    marginTop: 4,
   },
-  forgot: {
-    marginTop: 10,
-    color: "#999",
+  form: {
+    marginTop: 26,
   },
-  button: {
-    width: setWidth(80),
+  label: {
+    color: INK,
+    fontSize: 13,
+    fontWeight: "600",
+    marginLeft: 1,
   },
-  orText: {
-    marginVertical: 12,
-    color: "#cbd5e1",
+  passwordLabel: {
+    marginTop: 12,
   },
-  biometricBtn: {
+  input: {
+    width: "100%",
+    height: 52,
+    marginVertical: 7,
+    borderRadius: 12,
+    borderColor: "#DCE9EC",
+    backgroundColor: "#FFFFFF",
+  },
+  optionsRow: {
+    marginTop: 4,
     flexDirection: "row",
-    paddingVertical: 12,
-    borderRadius: 25,
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  rememberButton: {
+    minHeight: 38,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
     alignItems: "center",
     justifyContent: "center",
-    marginVertical: 10,
-    width: setWidth(80),
-    backgroundColor: COLORS.primary,
+    borderWidth: 1,
+    borderColor: "#B8C4CE",
+  },
+  checkboxOn: {
+    borderColor: TEAL,
+    backgroundColor: TEAL,
+  },
+  optionText: {
+    color: "#657087",
+    fontSize: 13,
+    marginLeft: 8,
+  },
+  forgotText: {
+    color: "#12AEB1",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  signInButton: {
+    width: "100%",
+    height: 52,
+    marginTop: 18,
+    marginBottom: 0,
+    borderRadius: 12,
+    paddingVertical: 0,
+    backgroundColor: TEAL,
+  },
+  signInText: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 25,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#DDE3E8",
+  },
+  dividerText: {
+    color: "#7C8597",
+    fontSize: 12,
+    marginHorizontal: 12,
+  },
+  biometricButton: {
+    height: 48,
+    marginTop: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#CFE7E8",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
   },
   biometricText: {
-    color: "#fff",
+    color: "#34777B",
+    fontSize: 13,
     fontWeight: "600",
-    marginLeft: 8,
+  },
+  pressed: {
+    opacity: 0.72,
   },
   backdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    justifyContent: "center",
+    backgroundColor: "rgba(23, 33, 61, 0.28)",
     alignItems: "center",
+    justifyContent: "center",
   },
   loaderBox: {
-    backgroundColor: "#fff",
+    minWidth: 140,
     padding: 20,
-    borderRadius: 12,
-    minWidth: 120,
+    borderRadius: 15,
     alignItems: "center",
-    elevation: 5,
-    shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 6,
+    backgroundColor: "#FFFFFF",
   },
-  text: {
+  loaderText: {
+    color: INK,
+    fontSize: 13,
     marginTop: 10,
-    fontSize: 16,
-    color: "#333",
   },
-  input: { width: setWidth(80) },
 });

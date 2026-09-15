@@ -1,19 +1,18 @@
 // PatientDetailsScreen.tsx
 import { CustomButton, ScreenWrapper } from "@components";
-import { Ionicons } from "@expo/vector-icons"; // works in Expo & CLI
-import Entypo from "@expo/vector-icons/Entypo";
-import { isNotEmpty, isValidJSON, setHeight } from "@lib";
+import { Ionicons } from "@expo/vector-icons";
+import { isNotEmpty, isValidJSON } from "@lib";
 import { fetchPatientHistory } from "api/patients";
 import AvatarInitials from "components/Avatar";
 import { COLORS } from "constants/Colors";
 import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  FlatList,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    FlatList,
+    Pressable,
+    StyleSheet,
+    Text,
+    View,
 } from "react-native";
 import ContentLoader from "react-native-easy-content-loader";
 
@@ -30,13 +29,15 @@ const PatientDetailsScreen = ({ route, navigation }) => {
         setVisits(a);
       }
       setLoading(false);
-    } catch (error) {
+    } catch {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (patient?.patient_id) detailHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patient?.patient_id]);
 
   const renderItem = ({ item }) => {
@@ -50,8 +51,8 @@ const PatientDetailsScreen = ({ route, navigation }) => {
           <Text style={styles.text}>Location: {item.location_name}</Text>
         </View>
 
-        <TouchableOpacity
-          style={{ padding: 10 }}
+        <Pressable
+          style={styles.historyAction}
           disabled={!isValidJSON(item.notes_data)}
           onPress={() => {
             navigation.navigate("Notes", {
@@ -71,13 +72,13 @@ const PatientDetailsScreen = ({ route, navigation }) => {
             size={28}
             color={COLORS.primary}
           />
-        </TouchableOpacity>
+        </Pressable>
       </View>
     );
   };
   return (
     <ScreenWrapper
-      title="Find Your Patients"
+      title="Patient Details"
       footerUnScrollable={() => (
         <CustomButton
           title={"Start Recording"}
@@ -87,76 +88,63 @@ const PatientDetailsScreen = ({ route, navigation }) => {
       )}
     >
       <View style={styles.container}>
-        <View style={styles.card}>
-          {/* --- Header Section --- */}
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: setHeight(3),
-              marginBottom: setHeight(2),
-            }}
-          >
-            {/* Avatar */}
+        <View style={styles.profileCard}>
+          <View style={styles.profileHeader}>
             <AvatarInitials
               name={patient?.name || "Unknown"}
-              size={setHeight(8)}
+              size={68}
+              rounded={false}
+              color={COLORS.primary}
+              style={styles.avatar}
             />
-
-            {/* Name & DOB */}
-            <View>
-              {patient?.name ? (
-                <Text style={styles.name}>{patient.name}</Text>
-              ) : null}
-
-              {patient?.dob ? (
-                <Text style={styles.date}>DOB: {patient.dob}</Text>
-              ) : null}
+            <View style={styles.profileCopy}>
+              <Text style={styles.name} numberOfLines={2}>
+                {patient?.name || "Unknown Patient"}
+              </Text>
+              <Text style={styles.specialty}>
+                {patient?.patient_status || "Patient"}
+              </Text>
             </View>
           </View>
 
-          {/* --- Appointment Info Section --- */}
-          <View style={styles.info}>
-            {patient?.patient_status ? (
-              <Text style={styles.label}>
-                Patient Status: {patient.patient_status}
-              </Text>
-            ) : null}
-
-            {/* Optional: Phone Numbers */}
-            {patient?.cell_phone ? (
-              <Text style={styles.phone}>Cell: {patient.cell_phone}</Text>
-            ) : null}
-
-            {patient?.home_phone ? (
-              <Text style={styles.phone}>Home: {patient.home_phone}</Text>
-            ) : null}
-
-            {/* Optional: Email */}
-            {patient?.email ? (
-              <Text style={styles.email}>Email: {patient.email}</Text>
-            ) : null}
-
-            {/* Optional: Alternate Account */}
-            {patient?.alternate_account ? (
-              <Text style={styles.account}>
-                Account #: {patient.alternate_account}
-              </Text>
-            ) : null}
-
-            {patient?.address ? (
-              <View style={styles.row}>
-                <Entypo name="location-pin" size={18} color="#555" />
-                <Text style={styles.address}>{patient.address}</Text>
+          <View style={styles.profileDivider} />
+          <View style={styles.detailGrid}>
+            <View style={styles.detailItem}>
+              <Ionicons name="calendar-outline" size={17} color={COLORS.primary} />
+              <View>
+                <Text style={styles.detailLabel}>Date of birth</Text>
+                <Text style={styles.detailValue}>{patient?.dob || "--"}</Text>
               </View>
-            ) : null}
+            </View>
+            <View style={styles.detailItem}>
+              <Ionicons name="id-card-outline" size={17} color={COLORS.primary} />
+              <View>
+                <Text style={styles.detailLabel}>Patient ID</Text>
+                <Text style={styles.detailValue}>
+                  {patient?.alternate_account || patient?.patient_id || "--"}
+                </Text>
+              </View>
+            </View>
           </View>
+          <View style={styles.contactRow}>
+            <Ionicons name="call-outline" size={17} color={COLORS.primary} />
+            <Text style={styles.contactText}>
+              {patient?.cell_phone || patient?.home_phone || "No phone number"}
+            </Text>
+          </View>
+          {patient?.email ? (
+            <View style={styles.contactRow}>
+              <Ionicons name="mail-outline" size={17} color={COLORS.primary} />
+              <Text style={styles.contactText}>{patient.email}</Text>
+            </View>
+          ) : null}
         </View>
+        <Text style={styles.sectionTitle}>Encounter History</Text>
         <FlatList
           data={visits}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderItem}
-          contentContainerStyle={{ padding: 10 }}
+          contentContainerStyle={styles.historyList}
           ListHeaderComponent={
             (loading && <ActivityIndicator color={COLORS.primary} />) || <></>
           }
@@ -180,87 +168,71 @@ const PatientDetailsScreen = ({ route, navigation }) => {
 export default PatientDetailsScreen;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  header: {
+  container: { flex: 1, paddingHorizontal: 16, paddingTop: 10 },
+  profileCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#E5ECEA",
+  },
+  profileHeader: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 10,
   },
-  headerTitle: { fontSize: 16, fontWeight: "600" },
+  profileCopy: {
+    flex: 1,
+    marginLeft: 13,
+    marginRight: 8,
+  },
   name: {
-    fontSize: 18,
+    fontSize: 19,
     fontWeight: "700",
-    marginVertical: 8,
-    width: setHeight(28),
+    color: COLORS.deep,
   },
-  card: {
-    backgroundColor: "#f9f9f9",
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-    margin: setHeight(1),
-  },
-  avatar: { width: 60, height: 60, borderRadius: 30, marginBottom: 10 },
-  info: { marginBottom: 10 },
-  date: { fontSize: 14, fontWeight: "500", marginBottom: 4 },
-  label: { fontSize: 14, color: "#666", marginBottom: 4 },
-  row: { flexDirection: "row", alignItems: "center", marginTop: setHeight(1.5) },
-  address: { marginLeft: 5, fontSize: 14, color: "#333", flexShrink: 1 },
-  divider: { height: 1, backgroundColor: "#ddd", marginVertical: 10 },
-  quickHistory: { fontSize: 15, fontWeight: "600", marginBottom: 6 },
-  detail: { fontSize: 14, color: "#444", marginBottom: 2 },
+  avatar: { backgroundColor: COLORS.secondary },
+  specialty: { fontSize: 13, color: COLORS.textLight, marginTop: 4 },
+  profileDivider: { height: 1, backgroundColor: "#EDF1F0", marginVertical: 16 },
+  detailGrid: { flexDirection: "row", gap: 12 },
+  detailItem: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8 },
+  detailLabel: { color: COLORS.textLight, fontSize: 11 },
+  detailValue: { color: COLORS.deep, fontSize: 13, fontWeight: "600", marginTop: 3 },
+  contactRow: { flexDirection: "row", alignItems: "center", marginTop: 14, gap: 8 },
+  contactText: { color: COLORS.text, fontSize: 13, flex: 1 },
+  sectionTitle: { color: COLORS.deep, fontSize: 17, fontWeight: "700", marginTop: 24, marginBottom: 4 },
+  historyList: { paddingBottom: 14 },
   button: {
     backgroundColor: COLORS.primary,
     padding: 14,
-    borderRadius: setHeight(1),
+    borderRadius: 10,
     alignItems: "center",
     marginTop: 16,
   },
-  buttonText: { color: "#fff", fontWeight: "600", fontSize: 16 },
   card1: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#fff",
-    padding: 15,
-    marginVertical: 6,
-    borderRadius: 10,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    backgroundColor: COLORS.card,
+    padding: 14,
+    marginTop: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5ECEA",
   },
   infoContainer: {
     flex: 1,
   },
   date1: {
-    fontWeight: "bold",
-    fontSize: 16,
+    color: COLORS.deep,
+    fontWeight: "700",
+    fontSize: 14,
     marginBottom: 4,
   },
   text: {
     fontSize: 14,
-    color: "#555",
+    color: COLORS.textLight,
   },
-  phone: {
-    fontSize: setHeight(1.5),
-    color: "#444",
-    marginTop: setHeight(0.4),
-  },
-
-  email: {
-    fontSize: setHeight(1.5),
-    color: "#0066CC",
-    marginTop: setHeight(0.4),
-  },
-
-  account: {
-    fontSize: setHeight(1.5),
-    color: "#333",
-    marginTop: setHeight(0.4),
+  historyAction: {
+    padding: 8,
   },
 });

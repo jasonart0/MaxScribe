@@ -1,29 +1,27 @@
 // import { localImages } from "@assets";
 import { CustomButton, ScreenWrapper } from "@components";
-import { Entypo } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { faildMessage, setHeight, setWidth } from "@lib";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { generateChat, uploadVoiceFile } from "api/voice";
 import AIProcessingLoader from "components/AnimationLoad";
 import PlayRecordedAudio from "components/AudioPlayer";
-import AvatarInitials from "components/Avatar";
-import Icon from "components/Icon";
-import MicPulse from "components/mic";
 import { COLORS } from "constants/Colors";
 import { SAMPLE_NOTE } from "constants/dummyData";
 import { useVoiceRecorder } from "hooks/useAudioRecording";
 import * as React from "react";
 import {
-  Animated,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Animated,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 function VoiceRecordScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const patient = route.params?.patient || {};
+  const autoStart = route.params?.autoStart === true;
   const [loading, setLoading] = React.useState(false);
   const {
     isRecording,
@@ -40,6 +38,14 @@ function VoiceRecordScreen() {
   } = useVoiceRecorder();
 
   const [recordedUri, setRecordedUri] = React.useState<string | null>(null);
+  const autoStartHandled = React.useRef(false);
+
+  React.useEffect(() => {
+    if (autoStart && !autoStartHandled.current) {
+      autoStartHandled.current = true;
+      void startRecording();
+    }
+  }, [autoStart, startRecording]);
 
   const toggleRecording = async () => {
     if (isRecording) {
@@ -111,6 +117,7 @@ function VoiceRecordScreen() {
 
   return (
     <ScreenWrapper
+      title="Recording"
       footerUnScrollable={() => {
         return (
           recordedUri && (
@@ -133,106 +140,76 @@ function VoiceRecordScreen() {
       {loading && <AIProcessingLoader visible={loading} />}
       <View style={styles.main}>
         <View style={styles.contentWrapper}>
-          {/* <Icon
-            name={patient.gender_code == "F" ? "femaleIcon" : "maleIcon"}
-            height={setHeight(13)}
-            width={setHeight(13)}
-            iconColor={COLORS.primary}
-          /> */}
-          <AvatarInitials name={patient.name} size={setHeight(13)} />
-          <Text style={styles.nameText}>
-            {patient.name || "Unknown Patient"}
-          </Text>
+          <View style={styles.recordingCard}>
+            <View style={styles.recordingBadge}>
+              <View style={styles.recordingDot} />
+              <Text style={styles.recordingBadgeText}>
+                {isRecording ? "RECORDING" : "READY TO RECORD"}
+              </Text>
+            </View>
 
-          <View style={styles.timerWrapper}>
-            <Text style={styles.timerText}>{formatTime(timer)}</Text>
-            {isRecording && (
-              <>
-                {/* {isRecording && !isPaused ? ( */}
-
-                <View style={styles.waveform}>
-                  {animValues.map((val, index) => (
-                    <Animated.View
-                      key={index}
-                      style={[
-                        styles.bar,
-                        { height: val, backgroundColor: COLORS.primary },
-                      ]}
-                    />
-                  ))}
-                </View>
-              </>
-            )}
-            {/* ) : (
-              <View style={styles.avatarImage1} />
-            )} */}
-            {isRecording && (
-              <View style={styles.transcriptionWrapper}>
-                <Text style={styles.transcriptionLine3}>{statusMessage}</Text>
-              </View>
-            )}
-            <TouchableOpacity
-              style={styles.micButton}
-              onPress={toggleRecording}
-            >
-              {isRecording && !isPaused ? (
-                <MicPulse
-                  size={80}
-                  rippleCount={5}
-                  rippleDuration={1500}
-                  rippleDelay={900}
-                  color={COLORS.primary} // iOS style red
+            <View style={styles.waveform}>
+              {animValues.map((val, index) => (
+                <Animated.View
+                  key={index}
+                  style={[
+                    styles.bar,
+                    {
+                      height: isRecording ? val : 4,
+                      backgroundColor: COLORS.primary,
+                    },
+                  ]}
                 />
-              ) : (
-                <Icon name="Mic" height={setHeight(8)} width={setHeight(8)} />
-              )}
-            </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={styles.timerText}>{formatTime(timer)}</Text>
+            <Text style={styles.patientLabel} numberOfLines={1}>
+              {patient.name || "Unknown Patient"}
+            </Text>
           </View>
 
-          {/* Show recorded file preview + Proceed */}
+          <View style={styles.transcriptionCard}>
+            <View style={styles.transcriptionHeader}>
+              <Ionicons name="sparkles" size={15} color={COLORS.primary} />
+              <Text style={styles.transcriptionTitle}>LIVE TRANSCRIPTION</Text>
+            </View>
+            <Text style={styles.transcriptionText}>
+              {isRecording ? statusMessage : "Start recording to transcribe the visit."}
+            </Text>
+          </View>
+
+          {!isRecording && !recordedUri ? (
+            <TouchableOpacity style={styles.startButton} onPress={toggleRecording}>
+              <Ionicons name="mic" size={20} color="#FFFFFF" />
+              <Text style={styles.startButtonText}>Start Recording</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
-        {/* Microphone pause Icon */}
+
         {recordedUri && (
-          <View style={{ marginBottom: setHeight(20) }}>
+          <View style={styles.audioPreview}>
             <PlayRecordedAudio uri={recordedUri} />
           </View>
         )}
-        {/* Controls */}
-        <View style={styles.bottomControls}>
-          {isRecording && !isPaused && (
+        {isRecording ? (
+          <View style={styles.bottomControls}>
             <TouchableOpacity
-              style={styles.pausebutton}
-              onPress={pauseRecording}
+              style={styles.pauseButton}
+              onPress={isPaused ? resumeRecording : pauseRecording}
             >
-              <View style={styles.pausebar} />
-              <View style={styles.pausebar} />
-            </TouchableOpacity>
-            // <TouchableOpacity
-            //   style={[styles.micButton, { backgroundColor: "green" }]}
-            //
-            // ></TouchableOpacity>
-          )}
-          {isRecording && isPaused && (
-            <TouchableOpacity
-              style={styles.pausebutton}
-              onPress={resumeRecording}
-            >
-              <Entypo
-                name="controller-play"
-                size={setHeight(5)}
-                color={COLORS.primary}
+              <Ionicons
+                name={isPaused ? "play" : "pause"}
+                size={17}
+                color={COLORS.deep}
               />
+              <Text style={styles.pauseText}>{isPaused ? "Resume" : "Pause"}</Text>
             </TouchableOpacity>
-          )}
-          {isRecording && (
-            <TouchableOpacity
-              style={styles.pausebutton}
-              onPress={toggleRecording}
-            >
-              <View style={styles.endbar} />
+            <TouchableOpacity style={styles.stopButton} onPress={toggleRecording}>
+              <View style={styles.stopSquare} />
+              <Text style={styles.stopText}>Stop</Text>
             </TouchableOpacity>
-          )}
-        </View>
+          </View>
+        ) : null}
       </View>
     </ScreenWrapper>
   );
@@ -240,7 +217,12 @@ function VoiceRecordScreen() {
 export default VoiceRecordScreen;
 
 const styles = StyleSheet.create({
- main: { flex: 1, justifyContent: "space-between" },
+  main: {
+    flex: 1,
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingTop: 10,
+  },
   topBar: {
     flexDirection: "row",
     justifyContent: "flex-start",
@@ -251,10 +233,84 @@ const styles = StyleSheet.create({
   backIcon: { width: 18, height: 18, tintColor: "#fff" },
   backIcon1: { width: 100, height: 100 },
   contentWrapper: {
+    width: "100%",
+    gap: 14,
+  },
+  recordingCard: {
+    minHeight: 270,
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    paddingVertical: 20,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 16,
-    marginVertical: setHeight(5),
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  recordingBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: COLORS.secondary,
+  },
+  recordingDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    marginRight: 6,
+    backgroundColor: COLORS.primary,
+  },
+  recordingBadgeText: {
+    color: COLORS.primary,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
+  patientLabel: {
+    color: COLORS.textLight,
+    fontSize: 13,
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  transcriptionCard: {
+    minHeight: 220,
+    borderRadius: 18,
+    padding: 16,
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  transcriptionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+  },
+  transcriptionTitle: {
+    color: COLORS.textLight,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.6,
+  },
+  transcriptionText: {
+    color: COLORS.deep,
+    fontSize: 14,
+    marginTop: 14,
+  },
+  startButton: {
+    height: 52,
+    borderRadius: 26,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: COLORS.primary,
+  },
+  startButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "700",
   },
   avatarImage: {
     width: setHeight(20),
@@ -300,18 +356,61 @@ const styles = StyleSheet.create({
   },
   timerWrapper: { alignItems: "center" },
   timerText: {
-    fontSize: setHeight(3),
-    fontWeight: "bold",
-    color: "#999999",
-    marginVertical: setHeight(4),
+    fontSize: 38,
+    fontWeight: "700",
+    color: COLORS.deep,
+    marginTop: 8,
+    letterSpacing: 1,
   },
   bottomControls: {
     flexDirection: "row",
-    justifyContent: "center",
-    gap: setWidth(10),
+    justifyContent: "space-between",
+    gap: 12,
     alignItems: "center",
-    marginTop: setHeight(4),
-    marginBottom: setHeight(30),
+    marginTop: 16,
+    marginBottom: 18,
+  },
+  pauseButton: {
+    flex: 1,
+    height: 52,
+    borderRadius: 26,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  pauseText: {
+    color: COLORS.deep,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  stopButton: {
+    flex: 1,
+    height: 52,
+    borderRadius: 26,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: COLORS.deep,
+  },
+  stopSquare: {
+    width: 10,
+    height: 10,
+    borderRadius: 2,
+    backgroundColor: "#FFFFFF",
+  },
+  stopText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  audioPreview: {
+    marginTop: 12,
+    marginBottom: 8,
   },
   micButton: {
     width: setHeight(15),
@@ -378,12 +477,14 @@ const styles = StyleSheet.create({
   waveform: {
     flexDirection: "row",
     alignItems: "center",
-    height: 80,
-    marginBottom: 20,
+    justifyContent: "center",
+    width: "100%",
+    height: 84,
+    marginTop: 18,
   },
   bar: {
-    width: 4,
-    marginHorizontal: 2,
-    borderRadius: 2,
+    width: 3,
+    marginHorizontal: 2.5,
+    borderRadius: 4,
   },
 });

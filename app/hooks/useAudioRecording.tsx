@@ -1,7 +1,7 @@
 // useVoiceRecorder.expo.ts
 import { Audio } from "expo-av";
-import { useEffect, useRef, useState } from "react";
-import { Alert, Animated, Easing } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Alert, Animated, Easing, Platform } from "react-native";
 
 const MIN_BAR = 2; // px
 const MAX_BAR = 80; // px
@@ -54,17 +54,15 @@ const recordingOptions: Audio.RecordingOptions = {
 };
 
 export const useVoiceRecorder = () => {
-  const [permissionResponse, requestPermission] = Audio.usePermissions();
-
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [statusMessage, setStatusMessage] = useState("Start speaking...");
   const [timer, setTimer] = useState(0);
 
   const [levels, setLevels] = useState<number[]>(() => new Array(BARS).fill(0));
-  const animValues = useRef(
+  const [animValues] = useState(() =>
     levels.map(() => new Animated.Value(MIN_BAR))
-  ).current;
+  );
 
   const recordingRef = useRef<Audio.Recording | null>(null);
 
@@ -116,16 +114,21 @@ export const useVoiceRecorder = () => {
   };
 
   const startMetering = () => {
+    if (Platform.OS === "web") return;
     if (meterIntervalRef.current) clearInterval(meterIntervalRef.current);
     meterIntervalRef.current = setInterval(async () => {
       if (!recordingRef.current) return;
-      const status = await recordingRef.current.getStatusAsync();
-      // status.metering is in dB; ~[-160, 0]
-      if (status?.isRecording && status?.metering !== undefined) {
-        const db = status.metering; // -160 .. 0
-        const clamped = Math.max(-60, Math.min(0, db)); // focus on useful range
-        const normalized = (clamped + 40) / 40; // 0..1
-        updateWaveform(normalized);
+      try {
+        const status = await recordingRef.current.getStatusAsync();
+        // status.metering is in dB; ~[-160, 0]
+        if (status?.isRecording && status?.metering !== undefined) {
+          const db = status.metering; // -160 .. 0
+          const clamped = Math.max(-60, Math.min(0, db)); // focus on useful range
+          const normalized = (clamped + 40) / 40; // 0..1
+          updateWaveform(normalized);
+        }
+      } catch {
+        stopMetering();
       }
     }, 100);
   };
@@ -148,13 +151,14 @@ export const useVoiceRecorder = () => {
     );
   };
 
-  const startRecording = async () => {
+  const startRecording = useCallback(async () => {
     if (isStartingRef.current) return;
     isStartingRef.current = true;
 
     try {
       const { status } = await Audio.requestPermissionsAsync();
       if (status !== "granted") {
+        setStatusMessage("Microphone permission is required.");
         Alert.alert("Permission Denied", "Microphone permission is required.");
         return;
       }
@@ -185,11 +189,13 @@ export const useVoiceRecorder = () => {
       startTimer();
       startMetering();
     } catch (e) {
+      setStatusMessage("Unable to start recording.");
       console.error("Start recording error:", e);
     } finally {
       isStartingRef.current = false;
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const pauseRecording = async () => {
     if (!recordingRef.current) return;
@@ -241,12 +247,6 @@ export const useVoiceRecorder = () => {
   };
 
   useEffect(() => {
-    if (!permissionResponse) {
-      requestPermission();
-    } else if (!permissionResponse.granted) {
-      Alert.alert("Permission Denied", "Microphone permission is required.");
-    }
-
     return () => {
       stopTimer();
       stopMetering();
@@ -255,7 +255,6 @@ export const useVoiceRecorder = () => {
         recordingRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return {

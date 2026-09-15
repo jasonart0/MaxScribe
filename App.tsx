@@ -8,6 +8,11 @@ import * as React from "react";
 import FlashMessage from "react-native-flash-message";
 import Login from "./app/screens/auth/loginScreen";
 import Home from "./app/screens/home/homeScreen";
+import PatientDetail from "./app/screens/home/PatientDetail";
+import Encounter from "./app/screens/voice/Encounter";
+import Notes from "./app/screens/voice/Notes";
+import Transcription from "./app/screens/voice/Transcription";
+import VoiceRecordScreen from "./app/screens/voice/ViceRecorder";
 
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 
@@ -43,41 +48,11 @@ export default function App() {
           >
             <Stack.Screen name="Login" component={Login} />
             <Stack.Screen name="Home" component={Home} />
-            <Stack.Screen
-              name="Voice"
-              getComponent={() =>
-                // eslint-disable-next-line @typescript-eslint/no-require-imports
-                require("./app/screens/voice/ViceRecorder").default
-              }
-            />
-            <Stack.Screen
-              name="Transcript"
-              getComponent={() =>
-                // eslint-disable-next-line @typescript-eslint/no-require-imports
-                require("./app/screens/voice/Transcription").default
-              }
-            />
-            <Stack.Screen
-              name="Notes"
-              getComponent={() => {
-                // eslint-disable-next-line @typescript-eslint/no-require-imports
-                return require("./app/screens/voice/Notes").default;
-              }}
-            />
-            <Stack.Screen
-              name="PatientDetails"
-              getComponent={() =>
-                // eslint-disable-next-line @typescript-eslint/no-require-imports
-                require("./app/screens/home/PatientDetail").default
-              }
-            />
-            <Stack.Screen
-              name="AddEncounter"
-              getComponent={() => {
-                // eslint-disable-next-line @typescript-eslint/no-require-imports
-                return require("./app/screens/voice/Encounter").default;
-              }}
-            />
+            <Stack.Screen name="Voice" component={VoiceRecordScreen} />
+            <Stack.Screen name="Transcript" component={Transcription} />
+            <Stack.Screen name="Notes" component={Notes} />
+            <Stack.Screen name="PatientDetails" component={PatientDetail} />
+            <Stack.Screen name="AddEncounter" component={Encounter} />
           </Stack.Navigator>
         </NavigationContainer>
       </BottomSheetModalProvider>

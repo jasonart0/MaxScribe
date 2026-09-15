@@ -2,11 +2,29 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { baseURL } from "constants/base";
 import { Platform } from "react-native";
-import RNFS from "react-native-fs";
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024;
 
 export const uploadVoiceFile = async (filePath, options = {}) => {
+  if (Platform.OS === "web") {
+    const response = await fetch(filePath);
+    if (!response.ok) {
+      throw new Error("Recorded file could not be read.");
+    }
+
+    const blob = await response.blob();
+    if (blob.size > MAX_FILE_SIZE) {
+      throw new Error(
+        "Audio file exceeds 25MB limit. Please record a shorter note."
+      );
+    }
+
+    return await sendToAPI(filePath, { ...options, blob });
+  }
+
+  // react-native-fs is native-only and must not be imported by the web bundle.
+  const RNFS = require("react-native-fs").default || require("react-native-fs");
+
   // Always normalize to "file://"
   const normalizedPath =
     Platform.OS === "android" && !filePath.startsWith("file://")
@@ -39,8 +57,14 @@ export const uploadVoiceFile = async (filePath, options = {}) => {
 export const sendToAPI = async (uri, options = {}) => {
   const formData = new FormData();
 
-  // Extract extension
-  const fileExtension = (uri.split(".").pop() || "").toLowerCase();
+  const blob = options.blob;
+  const blobExtension = blob?.type?.split("/").pop() || "webm";
+  const fileExtension =
+    Platform.OS === "web"
+      ? blobExtension === "mpeg"
+        ? "mp3"
+        : blobExtension
+      : (uri.split(".").pop() || "m4a").toLowerCase();
   const mimeTypeMap = {
     wav: "audio/wav",
     mp3: "audio/mpeg",
@@ -49,15 +73,20 @@ export const sendToAPI = async (uri, options = {}) => {
     mp4: "audio/mp4",
     caf: "audio/m4a",
   };
-  const mimeType = mimeTypeMap[fileExtension] || "audio/m4a";
+  const mimeType =
+    blob?.type || mimeTypeMap[fileExtension] || "audio/m4a";
   const fileName = `recording.${fileExtension}`;
 
-  // 👇 DO NOT strip file:// here – fetch expects it!
-  formData.append("audioFile", {
-    uri, // full "file://..." path
-    name: fileName,
-    type: mimeType,
-  });
+  if (Platform.OS === "web") {
+    const audioBlob = blob || (await (await fetch(uri)).blob());
+    formData.append("audioFile", audioBlob, fileName);
+  } else {
+    formData.append("audioFile", {
+      uri,
+      name: fileName,
+      type: mimeType,
+    });
+  }
 
   const token = await AsyncStorage.getItem("token");
 

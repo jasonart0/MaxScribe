@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons"; // Expo users
-import React, { useEffect, useState } from "react";
+import React, { ReactNode, useEffect, useState } from "react";
 import {
   StyleProp,
   StyleSheet,
@@ -24,6 +24,8 @@ type CustomInputProps = Pick<
   showPasswordToggle?: boolean;
   style?: StyleProp<ViewStyle>;
   required?: boolean;
+  leftIcon?: ReactNode;
+  iconColor?: string;
 };
 
 const CustomInput = ({
@@ -36,6 +38,8 @@ const CustomInput = ({
   required = false,
   returnKeyType,
   onSubmitEditing,
+  leftIcon,
+  iconColor = COLORS.primary,
 }: CustomInputProps) => {
   const [isPasswordVisible, setIsPasswordVisible] = useState(
     secureTextEntry || false
@@ -56,6 +60,7 @@ const CustomInput = ({
         isError && { borderColor: "red" }, // ✅ red border if required & empty
       ]}
     >
+      {leftIcon ? <View style={styles.leftIcon}>{leftIcon}</View> : null}
       <TextInput
         placeholder={placeholder}
         value={value}
@@ -79,7 +84,7 @@ const CustomInput = ({
           <Ionicons
             name={isPasswordVisible ? "eye-off-outline" : "eye-outline"}
             size={20}
-            color={COLORS.primary}
+            color={iconColor}
           />
         </TouchableOpacity>
       )}
@@ -101,6 +106,9 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 45,
     color: "#333",
+  },
+  leftIcon: {
+    marginRight: 10,
   },
 });
 

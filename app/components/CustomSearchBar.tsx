@@ -1,40 +1,49 @@
-import { Entypo, Ionicons } from "@expo/vector-icons"; // For CLI: react-native-vector-icons
-import { isNotEmpty, setHeight } from "@lib";
-import { COLORS } from "constants/Colors";
+import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import {
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View
+    Pressable,
+    StyleSheet,
+    TextInput,
+    TextInputProps,
+    View,
 } from "react-native";
+
+type CustomSearchBarProps = Pick<TextInputProps, "value" | "onChangeText"> & {
+  placeholder?: string;
+  onPressAction: () => void;
+  onPressSearch: () => void;
+};
+
 const CustomSearchBar = ({
   value,
+  placeholder = "Search patients",
   onChangeText,
   onPressAction,
   onPressSearch,
-}: any) => {
+}: CustomSearchBarProps) => {
   return (
     <View style={styles.container}>
-      <Ionicons name="search-outline" size={20} color="#555" />
+      <Ionicons name="search-outline" size={22} color="#425466" />
       <TextInput
-        placeholder="Search patient"
+        placeholder={placeholder}
         value={value}
         onChangeText={onChangeText}
         style={styles.input}
-        placeholderTextColor="#888"
-        returnKeyType="search" // changes keyboard button text (Search/Go/Done etc.)
-        onSubmitEditing={onPressSearch} // called when Enter/Return key is pressed
-        blurOnSubmit={true}
+        placeholderTextColor="#657587"
+        returnKeyType="search"
+        onSubmitEditing={onPressSearch}
+        blurOnSubmit
       />
-      {isNotEmpty(value) && (
-        <>
-          <TouchableOpacity
-            onPress={onPressAction}
-          >
-            <Entypo name="cross" size={setHeight(2)} color={COLORS.primary} />
-          </TouchableOpacity>
-        </>
+      {!!value?.trim() && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Clear search"
+          hitSlop={10}
+          onPress={onPressAction}
+          style={({ pressed }) => pressed && styles.pressed}
+        >
+          <Ionicons name="close-circle" size={21} color="#718096" />
+        </Pressable>
       )}
     </View>
   );
@@ -42,26 +51,31 @@ const CustomSearchBar = ({
 
 const styles = StyleSheet.create({
   container: {
+    height: 52,
+    marginHorizontal: 16,
+    marginTop: 2,
+    borderRadius: 13,
+    paddingHorizontal: 13,
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: setHeight(1),
-    paddingHorizontal: 12,
-    height: setHeight(4),
-    marginVertical: 10,
-    backgroundColor: "#fff",
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 2,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#B9D0D5",
+    shadowColor: "#667085",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 1,
   },
   input: {
     flex: 1,
-    marginHorizontal: 8,
-    color: "#333",
+    height: "100%",
+    marginHorizontal: 9,
+    color: "#17213D",
+    fontSize: 14,
   },
-  actionText: {
-    color: COLORS.primary,
-    fontWeight: "600",
+  pressed: {
+    opacity: 0.65,
   },
 });
 

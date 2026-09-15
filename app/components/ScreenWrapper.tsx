@@ -1,20 +1,25 @@
 import { useIsFocused } from "@react-navigation/native";
 import React, { Fragment, ReactNode } from "react";
 import {
-  ActivityIndicator,
-  ImageBackground,
-  Platform,
-  SafeAreaView,
-  StatusBar,
-  StatusBarProps,
-  StyleSheet,
-  View,
+    ActivityIndicator,
+    ImageBackground,
+    Platform,
+    SafeAreaView,
+    StatusBar,
+    StatusBarProps,
+    StyleSheet,
+    View,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
 import { setHeight, setWidth } from "@lib";
 import { COLORS } from "constants/Colors";
 import HeaderTitle from "./HeadTitle";
+
+const FocusAwareStatusBar: React.FC<StatusBarProps> = (props) => {
+  const isFocused = useIsFocused();
+  return isFocused ? <StatusBar {...props} /> : null;
+};
 
 interface ScreenWrapperProps {
   children: ReactNode;
@@ -68,10 +73,6 @@ const ScreenWrapper = ({
     backgroundColor = "transparent"; // Assuming AppColors.transparent is defined appropriately
   }
 
-  const FocusAwareStatusBar: React.FC<StatusBarProps> = (props) => {
-    const isFocused = useIsFocused();
-    return isFocused ? <StatusBar {...props} /> : null;
-  };
   const content = () => (
     <Fragment>
       {headerUnScrollable(title, showback)}

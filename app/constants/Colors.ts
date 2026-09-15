@@ -26,13 +26,13 @@ export const Colors = {
 };
 
 export const COLORS = {
-  background: "#F3FBF9",
-  primary: "#2E976B",
-  secondary: "#D5FBE6",
-  deep: "#1D2939",
+  background: "#F5F7FC",
+  primary: "#12BDB5",
+  secondary: "#DDF8F1",
+  deep: "#17213D",
   card: "#FFFFFF",
-  border: "#dfdfdfff",
-  text: "#101828",
-  textLight: "#667085",
+  border: "#E5ECEA",
+  text: "#17213D",
+  textLight: "#8992A7",
   danger: "#F04438",
 };
