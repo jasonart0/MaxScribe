@@ -6,7 +6,7 @@ import RNFS from "react-native-fs";
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024;
 
-export const uploadVoiceFile = async (filePath: string, options = {}) => {
+export const uploadVoiceFile = async (filePath, options = {}) => {
   // Always normalize to "file://"
   const normalizedPath =
     Platform.OS === "android" && !filePath.startsWith("file://")

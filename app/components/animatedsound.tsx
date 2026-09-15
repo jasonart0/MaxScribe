@@ -12,7 +12,9 @@ export default function RecordingBars() {
   const [recording, setRecording] = useState(false);
 
   // Create multiple animated values for bars
-  const bars = Array.from({ length: 10 }, () => useRef(new Animated.Value(10)).current);
+  const bars = useRef(
+    Array.from({ length: 10 }, () => new Animated.Value(10))
+  ).current;
 
   // Animate bars with random heights
   const animateBars = () => {

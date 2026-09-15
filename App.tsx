@@ -1,29 +1,32 @@
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-// Update the import path to the correct location of your screens
-import { Notes, PatientDetail, VoiceRecordScreen } from "@screens";
 import SplashAnimation from "components/AnimatedSplash";
 import * as SplashScreen from "expo-splash-screen";
 import * as React from "react";
-import { LogBox } from "react-native";
 import FlashMessage from "react-native-flash-message";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import AddEncounter from "screens/voice/Encounter";
 import Login from "./app/screens/auth/loginScreen";
 import Home from "./app/screens/home/homeScreen";
 
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
-import Transcript from "screens/voice/Transcription";
-LogBox.ignoreAllLogs();
 
 const Stack = createNativeStackNavigator();
-// SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch(() => {
+  // The native splash may already be hidden during fast refresh.
+});
+
 export default function App() {
   const [showSplash, setShowSplash] = React.useState(true);
 
-  const handleAnimationEnd = React.useCallback(async () => {
+  React.useEffect(() => {
+    SplashScreen.hideAsync().catch(() => {
+      // Keep rendering if the native splash was already hidden.
+    });
+  }, []);
+
+  const handleAnimationEnd = React.useCallback(() => {
     setShowSplash(false);
-    await SplashScreen.hideAsync(); // hide native splash
   }, []);
 
   if (showSplash) {
@@ -40,11 +43,41 @@ export default function App() {
           >
             <Stack.Screen name="Login" component={Login} />
             <Stack.Screen name="Home" component={Home} />
-            <Stack.Screen name="Voice" component={VoiceRecordScreen} />
-            <Stack.Screen name="Transcript" component={Transcript} />
-            <Stack.Screen name="Notes" component={Notes} />
-            <Stack.Screen name="PatientDetails" component={PatientDetail} />
-            <Stack.Screen name="AddEncounter" component={AddEncounter} />
+            <Stack.Screen
+              name="Voice"
+              getComponent={() =>
+                // eslint-disable-next-line @typescript-eslint/no-require-imports
+                require("./app/screens/voice/ViceRecorder").default
+              }
+            />
+            <Stack.Screen
+              name="Transcript"
+              getComponent={() =>
+                // eslint-disable-next-line @typescript-eslint/no-require-imports
+                require("./app/screens/voice/Transcription").default
+              }
+            />
+            <Stack.Screen
+              name="Notes"
+              getComponent={() => {
+                // eslint-disable-next-line @typescript-eslint/no-require-imports
+                return require("./app/screens/voice/Notes").default;
+              }}
+            />
+            <Stack.Screen
+              name="PatientDetails"
+              getComponent={() =>
+                // eslint-disable-next-line @typescript-eslint/no-require-imports
+                require("./app/screens/home/PatientDetail").default
+              }
+            />
+            <Stack.Screen
+              name="AddEncounter"
+              getComponent={() => {
+                // eslint-disable-next-line @typescript-eslint/no-require-imports
+                return require("./app/screens/voice/Encounter").default;
+              }}
+            />
           </Stack.Navigator>
         </NavigationContainer>
       </BottomSheetModalProvider>

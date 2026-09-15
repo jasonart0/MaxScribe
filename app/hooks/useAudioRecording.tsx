@@ -32,19 +32,23 @@ const BARS = 30;
 const recordingOptions: Audio.RecordingOptions = {
   android: {
     extension: ".m4a",
-    outputFormat: Audio.RECORDING_OPTION_ANDROID_OUTPUT_FORMAT_MPEG_4,
-    audioEncoder: Audio.RECORDING_OPTION_ANDROID_AUDIO_ENCODER_AAC,
+    outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+    audioEncoder: Audio.AndroidAudioEncoder.AAC,
     sampleRate: 16000,
     numberOfChannels: 1,
     bitRate: 64000, // ✅ safe for APIs
   },
   ios: {
     extension: ".m4a",
-    audioQuality: Audio.RECORDING_OPTION_IOS_AUDIO_QUALITY_MEDIUM,
+    audioQuality: Audio.IOSAudioQuality.MEDIUM,
     sampleRate: 16000,
     numberOfChannels: 1,
     bitRate: 64000,
-    outputFormat: Audio.RECORDING_OPTION_IOS_OUTPUT_FORMAT_MPEG4AAC,
+    outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
+  },
+  web: {
+    mimeType: "audio/webm",
+    bitsPerSecond: 64000,
   },
   isMeteringEnabled: true,
 };
