@@ -132,80 +132,90 @@ export default function AddEncounter({ route, navigation }) {
     >
       <View style={styles.container}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalView}>
-            <Text style={styles.title}>Add Edit Encounter</Text>
-
-            {/* Date */}
+          <View style={styles.formCard}>
+            {/* Location */}
             <TouchableOpacity
-              disabled
-              onPress={() => setDatePickerVisible(true)}
+              onPress={() => locationSheetRef.current?.expand()}
               style={[
-                styles.row,
-                errors.date && { borderColor: "red", borderWidth: 1 },
+                styles.selectorRow,
+                errors.location && styles.errorRow,
               ]}
             >
-              <Text style={styles.label}>Date Time:</Text>
-              <View style={styles.inputBox}>
-                <Ionicons name="calendar" size={16} color="#555" />
-                <Text>{selectedDate.toLocaleDateString()}</Text>
-                <Ionicons name="time" size={16} color="#555" />
-                <Text>
-                  {selectedDate.toLocaleTimeString("en-US", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: true,
-                  })}
+              <View style={styles.selectorIcon}>
+                <Ionicons name="location-outline" size={21} color={COLORS.primary} />
+              </View>
+              <View style={styles.selectorCopy}>
+                <Text style={styles.selectorTitle}>Location</Text>
+                <Text style={styles.selectorSubtitle} numberOfLines={1}>
+                  {location ? location.label : "Select location"}
                 </Text>
               </View>
+              <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
             </TouchableOpacity>
-            {errors.date && <Text style={styles.errorText}>Required *</Text>}
+            {errors.location && <Text style={styles.errorText}>Required *</Text>}
 
             {/* Provider */}
             <TouchableOpacity
               onPress={() => providerSheetRef.current?.expand()}
               style={[
-                styles.row,
-                errors.provider && { borderColor: "red", borderWidth: 1 },
+                styles.selectorRow,
+                errors.provider && styles.errorRow,
               ]}
             >
-              <Text style={styles.label}>Provider:</Text>
-              <View style={styles.openButton}>
-                <Text>{provider ? provider?.label : "Select an option"}</Text>
+              <View style={styles.selectorIcon}>
+                <Ionicons name="person-outline" size={21} color={COLORS.primary} />
               </View>
+              <View style={styles.selectorCopy}>
+                <Text style={styles.selectorTitle}>Care provider</Text>
+                <Text style={styles.selectorSubtitle} numberOfLines={1}>
+                  {provider ? provider.label : "Select provider first"}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={provider ? COLORS.primary : COLORS.border} />
             </TouchableOpacity>
             {errors.provider && (
               <Text style={styles.errorText}>Required *</Text>
             )}
 
-            {/* Location */}
+            {/* Preferred date */}
             <TouchableOpacity
-              onPress={() => locationSheetRef.current?.expand()}
+              onPress={() => setDatePickerVisible(true)}
               style={[
-                styles.row,
-                errors.location && { borderColor: "red", borderWidth: 1 },
+                styles.selectorRow,
+                errors.date && styles.errorRow,
               ]}
             >
-              <Text style={styles.label}>Location:</Text>
-              <View style={styles.openButton}>
-                <Text>{location ? location?.label : "Select an option"}</Text>
+              <View style={styles.selectorIcon}>
+                <Ionicons name="calendar-outline" size={21} color={COLORS.primary} />
               </View>
+              <View style={styles.selectorCopy}>
+                <Text style={styles.selectorTitle}>Preferred date</Text>
+                <Text style={styles.selectorSubtitle}>
+                  {selectedDate.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
             </TouchableOpacity>
-            {errors.location && (
-              <Text style={styles.errorText}>Required *</Text>
-            )}
+            {errors.date && <Text style={styles.errorText}>Required *</Text>}
 
-            {/* POS */}
+            {/* Place of service */}
             <TouchableOpacity
               onPress={() => posSheetRef.current?.expand()}
               style={[
-                styles.row,
-                errors.pos && { borderColor: "red", borderWidth: 1 },
+                styles.selectorRow,
+                errors.pos && styles.errorRow,
               ]}
             >
-              <Text style={styles.label}>POS:</Text>
-              <View style={styles.openButton}>
-                <Text>{pos ? pos?.label : "Select an option"}</Text>
+              <View style={styles.selectorIcon}>
+                <Ionicons name="business-outline" size={21} color={COLORS.primary} />
               </View>
+              <View style={styles.selectorCopy}>
+                <Text style={styles.selectorTitle}>Place of service</Text>
+                <Text style={styles.selectorSubtitle} numberOfLines={1}>
+                  {pos ? pos.label : "Select place of service"}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={pos ? COLORS.primary : COLORS.border} />
             </TouchableOpacity>
             {errors.pos && <Text style={styles.errorText}>Required *</Text>}
           </View>
@@ -272,9 +282,13 @@ export default function AddEncounter({ route, navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  modalView: {
-    borderRadius: 12,
-    padding: 16,
+  modalOverlay: { paddingHorizontal: 16, paddingTop: 8 },
+  formCard: {
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#D6E2EA",
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.88)",
   },
   headerText: {
     color: COLORS.primary,
@@ -282,37 +296,33 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginLeft: 16,
   },
+  selectorRow: {
+    minHeight: 74,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E1EAF0",
+  },
+  selectorIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#EDF7F8",
+  },
+  selectorCopy: { flex: 1, minWidth: 0, marginLeft: 12 },
+  selectorTitle: { color: COLORS.deep, fontSize: 15, fontWeight: "600" },
+  selectorSubtitle: { marginTop: 4, color: COLORS.textLight, fontSize: 12 },
+  errorRow: { backgroundColor: "#FFF7F7", borderBottomColor: COLORS.danger },
   title: {
     fontSize: 18,
     fontWeight: "bold",
     textAlign: "center",
     marginBottom: 12,
     color: COLORS.primary,
-  },
-  row: {
-    marginVertical: 3,
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  label: {
-    marginBottom: 5,
-    fontSize: 16,
-    fontWeight: "500",
-    color: COLORS.primary,
-  },
-  inputBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    padding: 10,
-    borderRadius: 8,
-    backgroundColor: "#F8FFD9",
-  },
-  openButton: {
-    backgroundColor: "#fff",
   },
   buttonRow: {
     marginTop: 20,

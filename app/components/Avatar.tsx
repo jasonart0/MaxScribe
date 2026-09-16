@@ -1,14 +1,15 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { COLORS } from "constants/Colors";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-  GestureResponderEvent,
-  Image,
-  ImageStyle,
-  Pressable,
-  Text,
-  TextStyle,
-  View,
-  ViewStyle
+    GestureResponderEvent,
+    Image,
+    ImageStyle,
+    Pressable,
+    Text,
+    TextStyle,
+    View,
+    ViewStyle
 } from "react-native";
 type AvatarInitialsProps = {
   name?: string | null;                // full name, e.g. "NEWMAN, DEMO" or "Demo Newman"
@@ -84,7 +85,18 @@ export default function AvatarInitials({
   rounded = true,
 }: AvatarInitialsProps) {
   const initials = useMemo(() => nameToInitials(name), [name]);
+  const [token, setToken] = useState<string | null>(null);
   const appliedFontSize = fontSize ?? Math.round(size * 0.42);
+
+  useEffect(() => {
+    let mounted = true;
+    AsyncStorage.getItem("token").then((storedToken) => {
+      if (mounted) setToken(storedToken);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const containerStyle: ViewStyle = {
     width: size,
@@ -110,8 +122,15 @@ export default function AvatarInitials({
     borderRadius: rounded ? size / 2 : Math.max(6, size * 0.12),
   };
 
-  const content = imageUri ? (
-    <Image source={{ uri: imageUri }} style={imageStyle} resizeMode="cover" />
+  const content = imageUri && token ? (
+    <Image
+      source={{
+        uri: imageUri,
+        headers: { Authorization: `Bearer ${token}` },
+      }}
+      style={imageStyle}
+      resizeMode="cover"
+    />
   ) : (
     <Text style={textStyle} accessibilityLabel={`Avatar ${initials}`}>
       {initials}

@@ -32,9 +32,11 @@ export default function PatientCard({ patient, onViewPress, onCallPress }: Patie
       onPress={onViewPress} style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
       <View style={styles.topRow}>
         {imageUri ? (
-          <AvatarInitials imageUri={imageUri} name={patient.name} size={66} />
+          <AvatarInitials imageUri={imageUri} name={patient.name} size={56} />
         ) : (
-          <View style={styles.avatar}><Ionicons name="person" size={35} color="#4C9BF5" /></View>
+          <View style={styles.avatar}>
+            <Ionicons name="person" size={35} color="#4C9BF5" />
+          </View>
         )}
         <View style={styles.copy}>
           <Text numberOfLines={1} style={styles.name}>{patient.name || "Unknown Patient"}</Text>

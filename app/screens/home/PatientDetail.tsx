@@ -90,12 +90,11 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
     loadHistory();
   }, [patient?.patient_id]);
 
-  const imageUri =
-    typeof patient.pic === "string" && patient.pic
-      ? patient.pic.startsWith("http")
-        ? patient.pic
-        : `${baseURL}/${patient.pic.replace(/^\//, "")}`
-      : null;
+  const imageUri = typeof patient.pic === "string" && patient.pic
+    ? patient.pic.startsWith("http")
+      ? patient.pic
+      : `${baseURL}/${patient.pic.replace(/^\//, "")}`
+    : null;
   const age = patient.age ?? calculateAge(patient.dob);
   const gender = patient.gender || patient.sex || "Patient";
   const openVisit = (item: Visit) => {
@@ -123,14 +122,17 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
           <Ionicons name="document-text-outline" size={29} color="#287BE4" />
         </View>
         <View style={styles.visitCopy}>
-          {!!item.provider_name && (
-            <Text numberOfLines={1} style={styles.providerName}>
-              Provider: {item.provider_name}
-            </Text>
-          )}
+          {!!item.location_name && <Text numberOfLines={1} style={styles.visitLocation}>
+            {item.location_name}
+          </Text>}
           {!!item.location_name && (
             <Text numberOfLines={1} style={styles.providerName}>
-              Location: {item.location_name}
+              {item.provider_name || "Provider unavailable"}
+            </Text>
+          )}
+          {!item.location_name && !!item.provider_name && (
+            <Text numberOfLines={1} style={styles.visitLocation}>
+              {item.provider_name}
             </Text>
           )}
         </View>
@@ -293,11 +295,11 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(249,252,255,0.94)",
   },
   visitCard: {
-    minHeight: 100,
-    marginTop: 11,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 15,
+    minHeight: 76,
+    marginTop: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: "#E1EFFB",
     flexDirection: "row",
@@ -306,18 +308,16 @@ const styles = StyleSheet.create({
     elevation: 0,
   },
   documentIcon: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+    width: 56,
+    height: 56,
+    borderRadius: 11,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#EFF8FF",
+    backgroundColor: "#F1F7FC",
   },
-  visitCopy: { flex: 1, minWidth: 0, marginLeft: 15 },
-  visitDate: { color: "#174DD5", fontSize: 13, fontWeight: "500" },
-  visitType: { marginTop: 3, color: "#10107A", fontSize: 16, fontWeight: "600" },
-  providerName: { marginTop: 3, color: "#607BC2", fontSize: 14 },
-  visitMetadata: { marginTop: 4, color: "#7285A8", fontSize: 12, lineHeight: 17 },
+  visitCopy: { flex: 1, minWidth: 0, marginLeft: 12 },
+  visitLocation: { color: COLORS.deep, fontSize: 13, fontWeight: "700" },
+  providerName: { marginTop: 3, color: COLORS.primary, fontSize: 11, fontWeight: "600" },
   loader: { marginTop: 28 },
   emptyState: { alignItems: "center", paddingVertical: 36 },
   emptyText: { marginTop: 10, color: "#607BC2", fontSize: 14 },
