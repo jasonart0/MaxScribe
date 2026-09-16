@@ -282,13 +282,13 @@ export default function AddEncounter({ route, navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  modalOverlay: { paddingHorizontal: 16, paddingTop: 8 },
+  modalOverlay: { paddingHorizontal: 12, paddingTop: 12 },
   formCard: {
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "#D6E2EA",
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.88)",
+    borderColor: "#D9E5EC",
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.94)",
   },
   headerText: {
     color: COLORS.primary,
@@ -297,9 +297,9 @@ const styles = StyleSheet.create({
     marginLeft: 16,
   },
   selectorRow: {
-    minHeight: 74,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    minHeight: 72,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
     flexDirection: "row",
     alignItems: "center",
     borderBottomWidth: 1,

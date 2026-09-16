@@ -3,8 +3,6 @@ import BottomSheet, {
     BottomSheetFlatList,
 } from "@gorhom/bottom-sheet";
 import { setHeight } from "@lib";
-import AvatarInitials from "components/Avatar";
-import { baseURL } from "constants/base";
 import { COLORS } from "constants/Colors";
 import React, { useCallback, useMemo, useState } from "react";
 import {
@@ -89,21 +87,11 @@ const CustomDropdown = ({
             keyExtractor={(_, index) => index.toString()}
             renderItem={({ item }) => {
               const isSelected = selectedValue?.value === item.value;
-              const imageValue = item.value?.pic || item.value?.image ||
-                item.value?.image_url || item.value?.photo || item.value?.profile_image;
-              const imageUri = imageValue
-                ? String(imageValue).startsWith("http")
-                  ? String(imageValue)
-                  : `${baseURL}/${String(imageValue).replace(/^\//, "")}`
-                : null;
               return (
                 <TouchableOpacity
                   style={[styles.row, isSelected && styles.selectedRow]}
                   onPress={() => handleSelect(item)}
                 >
-                  {imageUri ? (
-                    <AvatarInitials imageUri={imageUri} name={item.label} size={32} />
-                  ) : null}
                   <Text
                     style={[
                       styles.label,
@@ -150,9 +138,6 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
     padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#eee",

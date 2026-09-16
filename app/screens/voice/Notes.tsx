@@ -1,12 +1,12 @@
 import { CustomButton, ScreenWrapper } from "@components";
 import { Ionicons } from "@expo/vector-icons";
 import {
-  isNotEmpty,
-  sectionConfig,
-  sectionsToApiResponse,
-  setHeight,
-  setWidth,
-  successMessage,
+    isNotEmpty,
+    sectionConfig,
+    sectionsToApiResponse,
+    setHeight,
+    setWidth,
+    successMessage,
 } from "@lib";
 import { savePatientScribeData } from "api/Encounter";
 import DynamicEditor from "components/EditAble/DynamicEditable";
@@ -16,24 +16,16 @@ import CollapsibleSection from "components/Section";
 import { COLORS } from "constants/Colors";
 import useVoice from "hooks/useVoice";
 import { getUserData } from "lib/authdata";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 export default function Notes({ route, navigation }) {
   const { patient, transcription, jsonData, editAble, aData } =
     route.params?.data || {};
 
-  const [sections, setSections] = useState([]);
+  const [sections, setSections] = useState(() => jsonData ? sectionConfig(jsonData) || [] : []);
   const [editData, setEditData] = useState<any>(null);
-  const [editable, setEditable] = useState<any>(true);
+  const editable = editAble === undefined ? true : editAble;
   const [openEditModal, setOpenEditModal] = useState(false);
-  useEffect(() => {
-    if (jsonData) {
-      setSections(sectionConfig(jsonData) || []);
-    }
-    if (editAble !== undefined) {
-      setEditable(editAble);
-    }
-  }, [jsonData]);
 
   const updateSectionData = (title, newData) => {
     setSections((prevSections) =>

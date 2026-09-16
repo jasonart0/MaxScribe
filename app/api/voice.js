@@ -22,35 +22,13 @@ export const uploadVoiceFile = async (filePath, options = {}) => {
     return await sendToAPI(filePath, { ...options, blob });
   }
 
-  // react-native-fs is native-only and must not be imported by the web bundle.
-  const RNFS = require("react-native-fs").default || require("react-native-fs");
-
   // Always normalize to "file://"
   const normalizedPath =
     Platform.OS === "android" && !filePath.startsWith("file://")
       ? `file://${filePath}`
       : filePath;
 
-  // RNFS needs the path without "file://"
-  const cleanPath = normalizedPath.replace("file://", "");
-
-  const fileExists = await RNFS.exists(cleanPath);
-  if (!fileExists) {
-    throw new Error("Recorded file does not exist.");
-  }
-
-  const stats = await RNFS.stat(cleanPath);
-  const fileSize = stats.size;
-  const sizeInMB = (fileSize / (1024 * 1024)).toFixed(2);
-  console.log(`🎤 File size: ${sizeInMB} MB`);
-
-  if (fileSize > MAX_FILE_SIZE) {
-    throw new Error(
-      "Audio file exceeds 25MB limit. Please record a shorter note."
-    );
-  }
-
-  // Pass the normalized (with file://) path to sendToAPI
+  // React Native FormData reads the local recording directly from this URI.
   return await sendToAPI(normalizedPath, options);
 };
 

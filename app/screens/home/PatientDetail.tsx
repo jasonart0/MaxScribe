@@ -90,11 +90,12 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
     loadHistory();
   }, [patient?.patient_id]);
 
-  const imageUri = typeof patient.pic === "string" && patient.pic
-    ? patient.pic.startsWith("http")
-      ? patient.pic
-      : `${baseURL}/${patient.pic.replace(/^\//, "")}`
-    : null;
+  const imageUri =
+    typeof patient.pic === "string" && patient.pic
+      ? patient.pic.startsWith("http")
+        ? patient.pic
+        : `${baseURL}/${patient.pic.replace(/^\//, "")}`
+      : null;
   const age = patient.age ?? calculateAge(patient.dob);
   const gender = patient.gender || patient.sex || "Patient";
   const openVisit = (item: Visit) => {
