@@ -2,10 +2,9 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import SplashAnimation from "components/AnimatedSplash";
-import * as SplashScreen from "expo-splash-screen";
-import * as React from "react";
+import React, { useState } from "react";
 import FlashMessage from "react-native-flash-message";
+import SplashScreens from "./app/components/SplashScreens";
 import Login from "./app/screens/auth/loginScreen";
 import Home from "./app/screens/home/homeScreen";
 import PatientDetail from "./app/screens/home/PatientDetail";
@@ -15,30 +14,20 @@ import Transcription from "./app/screens/voice/Transcription";
 import VoiceRecordScreen from "./app/screens/voice/ViceRecorder";
 
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 const Stack = createNativeStackNavigator();
-SplashScreen.preventAutoHideAsync().catch(() => {
-  // The native splash may already be hidden during fast refresh.
-});
 
 export default function App() {
-  const [showSplash, setShowSplash] = React.useState(true);
+  const [showSplashScreens, setShowSplashScreens] = useState(true);
 
-  React.useEffect(() => {
-    SplashScreen.hideAsync().catch(() => {
-      // Keep rendering if the native splash was already hidden.
-    });
-  }, []);
-
-  const handleAnimationEnd = React.useCallback(() => {
-    setShowSplash(false);
-  }, []);
-
-  if (showSplash) {
-    return <SplashAnimation onAnimationEnd={handleAnimationEnd} />;
+  if (showSplashScreens) {
+    return <SplashScreens onComplete={() => setShowSplashScreens(false)} />;
   }
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
       <FlashMessage position={'top'} />
       <BottomSheetModalProvider>
         <NavigationContainer>
@@ -56,6 +45,7 @@ export default function App() {
           </Stack.Navigator>
         </NavigationContainer>
       </BottomSheetModalProvider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

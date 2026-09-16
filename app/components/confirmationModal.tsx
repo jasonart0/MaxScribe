@@ -1,5 +1,4 @@
 // components/ConfirmationModal.tsx
-import { setHeight } from "@lib";
 import { COLORS } from "constants/Colors";
 import React from "react";
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -68,23 +67,23 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 6,
-    paddingVertical: setHeight(3),
+    paddingVertical: 20,
   },
   message: {
-    fontSize: setHeight(1.8),
+    fontSize: 14,
     textAlign: "center",
     marginBottom: 20,
     color: "#333",
     fontWeight: "500",
-    paddingVertical: setHeight(2),
+    paddingVertical: 8,
   },
   message1: {
-    fontSize: setHeight(2.5),
+    fontSize: 18,
     textAlign: "center",
     marginBottom: 20,
     color: COLORS.primary,
     fontWeight: "bold",
-    paddingVertical: setHeight(2),
+    paddingVertical: 4,
   },
   buttonRow: {
     flexDirection: "row",
@@ -92,9 +91,9 @@ const styles = StyleSheet.create({
   },
   button: {
     flex: 1,
-    paddingVertical: setHeight(2),
-    borderRadius: setHeight(5),
-    marginHorizontal: setHeight(1),
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginHorizontal: 4,
     alignItems: "center",
   },
   cancel: {

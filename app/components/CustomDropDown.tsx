@@ -1,17 +1,17 @@
 import BottomSheet, {
-  BottomSheetBackdrop,
-  BottomSheetFlatList,
+    BottomSheetBackdrop,
+    BottomSheetFlatList,
 } from "@gorhom/bottom-sheet";
 import { setHeight } from "@lib";
 import { COLORS } from "constants/Colors";
 import React, { useCallback, useMemo, useState } from "react";
 import {
-  Keyboard,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Keyboard,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from "react-native";
 
 interface DropdownItem {
@@ -130,13 +130,15 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     borderWidth: 1,
-    borderColor: "#ccc",
+    borderColor: COLORS.border,
     borderRadius: 8,
-    padding: 10,
+    paddingHorizontal: 12,
+    minHeight: 44,
     marginBottom: 12,
+    color: COLORS.text,
   },
   row: {
-    padding: 14,
+    padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
     borderRadius: 8,
@@ -145,8 +147,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.secondary,
   },
   label: {
-    fontSize: 16,
-    color: "#333",
+    fontSize: 15,
+    color: COLORS.text,
   },
   selectedLabel: {
     fontWeight: "bold",

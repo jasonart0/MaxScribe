@@ -1,78 +1,57 @@
-import { localImages } from "@assets";
-import { CustomButton, CustomInput, ScreenWrapper } from "@components";
 import { Ionicons } from "@expo/vector-icons";
 import { faildMessage, isNotEmpty, successMessage } from "@lib";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { loginUser } from "api/auth";
-import { useLocalAuth } from "hooks/useLocalAuth";
-import { getUserData } from "lib/authdata";
-import React, { useEffect, useState } from "react";
+import AppBackground from "components/AppBackground";
+import { COLORS } from "constants/Colors";
+import React, { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    SafeAreaView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    useWindowDimensions,
+    View,
 } from "react-native";
 
-const TEAL = "#12BDB5";
-const INK = "#17213D";
+const PRIMARY = "#087DDA";
+const INK = "#062E71";
 
 export default function LoginScreen({ navigation }: any) {
-  const [id, setId] = useState("");
+  const { height } = useWindowDimensions();
+  const isCompact = height < 760;
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(true);
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isBioLoading, setIsBioLoading] = useState(false);
-  const [supportsBiometric, setSupportsBiometric] = useState(false);
-  const [idError, setIdError] = useState(false);
+  const [emailError, setEmailError] = useState(false);
   const [passwordError, setPasswordError] = useState(false);
-  const [biometricType, setBiometricType] = useState("face");
-  const { checkHardware, checkEnrolled, authenticate, getType } =
-    useLocalAuth();
-
-  useEffect(() => {
-    (async () => {
-      const compatible = await checkHardware();
-      const enrolled = await checkEnrolled();
-      const user = await getUserData();
-      setBiometricType(await getType());
-      setSupportsBiometric(
-        compatible &&
-          enrolled &&
-          isNotEmpty(user?.id) &&
-          isNotEmpty(user?.username)
-      );
-    })();
-    // These helpers are intentionally checked once when the login screen mounts.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const handleLogin = async () => {
-    const missingId = !isNotEmpty(id);
+    const missingEmail = !isNotEmpty(email);
     const missingPassword = !isNotEmpty(password);
-    setIdError(missingId);
+    setEmailError(missingEmail);
     setPasswordError(missingPassword);
 
-    if (missingId || missingPassword) {
-      faildMessage("Please enter your user ID and password");
+    if (missingEmail || missingPassword) {
+      faildMessage("Please enter your email address and password");
       return;
     }
 
     setIsLoading(true);
     try {
-      const result = await loginUser(id.trim(), password);
+      const result = await loginUser(email.trim(), password);
       if (!result.success) {
         faildMessage(result.message || "Login failed. Please try again.");
         return;
       }
 
-      if (!rememberMe) {
-        await AsyncStorage.removeItem("userdata");
-      }
       successMessage("Login Successful");
       navigation.replace("Home");
     } catch (error) {
@@ -84,327 +63,247 @@ export default function LoginScreen({ navigation }: any) {
     }
   };
 
-  const handleBiometricLogin = async () => {
-    const authenticated = await authenticate();
-    const user = await getUserData();
-    if (!authenticated || !isNotEmpty(user)) return;
-
-    setIsBioLoading(true);
-    try {
-      const result = await loginUser(
-        user?.username?.trim(),
-        user?.password || ""
-      );
-      if (result.success) {
-        successMessage("Login Successful");
-        navigation.replace("Home");
-      } else {
-        faildMessage(result.message || "Biometric login failed.");
-      }
-    } catch {
-      faildMessage("Biometric login is unavailable. Please log in manually.");
-    } finally {
-      setIsBioLoading(false);
-    }
-  };
-
   return (
-    <ScreenWrapper
-      scrollEnabled
-      showback={false}
-      headerUnScrollable={() => null}
-      backgroundColor="#F5F7FC"
-      statusBarColor="#F5F7FC"
-      contentContainerStyle={styles.scrollContent}
-    >
-      <View style={styles.container}>
-        <View style={styles.decorativeCircle} />
+    <AppBackground>
+      <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "height" : undefined}
+        style={styles.keyboardView}
+      >
+          <View style={[styles.page, isCompact && styles.pageCompact]}>
+            <View style={[styles.content, isCompact && styles.contentCompact]}>
+              <Image
+                source={require("../../../assets/images/logo.png")}
+                resizeMode="contain"
+                style={[styles.logo, isCompact && styles.logoCompact]}
+              />
 
-        <View style={styles.brandBlock}>
-          <View style={styles.logoBox}>
-            <Image source={localImages.logo} style={styles.logo} />
-          </View>
-          <Text style={styles.title}>Log in</Text>
-          <Text style={styles.subtitle}>
-            Welcome back! Please log in{"\n"}to continue.
-          </Text>
-        </View>
+              <Text style={[styles.title, isCompact && styles.titleCompact]}>
+                Welcome Back
+              </Text>
+              <Text style={[styles.subtitle, isCompact && styles.subtitleCompact]}>
+                Sign in to continue to your{"\n"}clinical workspace.
+              </Text>
 
-        <View style={styles.form}>
-          <Text style={styles.label}>User ID</Text>
-          <CustomInput
-            placeholder="Enter your user ID"
-            value={id}
-            style={styles.input}
-            onChangeText={setId}
-            required={idError}
-            leftIcon={<Ionicons name="person-outline" size={20} color="#8992A7" />}
-            returnKeyType="next"
-          />
+              <View style={[styles.form, isCompact && styles.formCompact]}>
+                <View
+                  style={[
+                    styles.inputBox,
+                    isCompact && styles.inputBoxCompact,
+                    emailError && styles.inputError,
+                  ]}
+                >
+                  <Ionicons name="mail-outline" size={25} color="#104A89" />
+                  <TextInput
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="email-address"
+                    onChangeText={(value) => {
+                      setEmail(value);
+                      if (emailError) setEmailError(!value.trim());
+                    }}
+                    placeholder="Email Address"
+                    placeholderTextColor="#7795C2"
+                    returnKeyType="next"
+                    style={styles.input}
+                    value={email}
+                  />
+                </View>
 
-          <Text style={[styles.label, styles.passwordLabel]}>Password</Text>
-          <CustomInput
-            placeholder="Enter your password"
-            value={password}
-            style={styles.input}
-            onChangeText={setPassword}
-            secureTextEntry
-            required={passwordError}
-            showPasswordToggle
-            iconColor="#8992A7"
-            leftIcon={<Ionicons name="lock-closed-outline" size={20} color="#8992A7" />}
-            returnKeyType="go"
-            onSubmitEditing={handleLogin}
-          />
+                <View
+                  style={[
+                    styles.inputBox,
+                    styles.passwordBox,
+                    isCompact && styles.inputBoxCompact,
+                    isCompact && styles.passwordBoxCompact,
+                    passwordError && styles.inputError,
+                  ]}
+                >
+                  <Ionicons name="lock-closed-outline" size={25} color="#104A89" />
+                  <TextInput
+                    autoCapitalize="none"
+                    onChangeText={(value) => {
+                      setPassword(value);
+                      if (passwordError) setPasswordError(!value.trim());
+                    }}
+                    onSubmitEditing={handleLogin}
+                    placeholder="Password"
+                    placeholderTextColor="#7795C2"
+                    returnKeyType="go"
+                    secureTextEntry={!passwordVisible}
+                    style={styles.input}
+                    value={password}
+                  />
+                  <Pressable
+                    accessibilityLabel={passwordVisible ? "Hide password" : "Show password"}
+                    accessibilityRole="button"
+                    hitSlop={12}
+                    onPress={() => setPasswordVisible((visible) => !visible)}
+                    style={({ pressed }) => pressed && styles.pressed}
+                  >
+                    <Ionicons
+                      name={passwordVisible ? "eye-off-outline" : "eye-outline"}
+                      size={27}
+                      color="#104A89"
+                    />
+                  </Pressable>
+                </View>
 
-          <View style={styles.optionsRow}>
-            <Pressable
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: rememberMe }}
-              onPress={() => setRememberMe((value) => !value)}
-              style={styles.rememberButton}
-            >
-              <View style={[styles.checkbox, rememberMe && styles.checkboxOn]}>
-                {rememberMe ? (
-                  <Ionicons name="checkmark" size={16} color="#FFFFFF" />
-                ) : null}
-              </View>
-              <Text style={styles.optionText}>Remember me</Text>
-            </Pressable>
-            <Pressable
-              onPress={() =>
-                Alert.alert(
-                  "Forgot password?",
-                  "Please contact your practice administrator to reset your password."
-                )
-              }
-            >
-              <Text style={styles.forgotText}>Forgot password?</Text>
-            </Pressable>
-          </View>
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={isLoading}
+                  onPress={handleLogin}
+                  style={({ pressed }) => [
+                    styles.signInButton,
+                    isCompact && styles.signInButtonCompact,
+                    pressed && styles.signInPressed,
+                  ]}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.signInText}>Sign In</Text>
+                  )}
+                </Pressable>
 
-          <CustomButton
-            isLoading={isLoading}
-            title="Sign in"
-            onPress={handleLogin}
-            style={styles.signInButton}
-            textStyle={styles.signInText}
-          />
-
-          {supportsBiometric ? (
-            <>
-              <View style={styles.dividerRow}>
-                <View style={styles.divider} />
-                <Text style={styles.dividerText}>Or continue with</Text>
-                <View style={styles.divider} />
-              </View>
-              <Pressable
-                disabled={isBioLoading || isLoading}
-                onPress={handleBiometricLogin}
-                style={({ pressed }) => [
-                  styles.biometricButton,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <Ionicons
-                  name={
-                    biometricType === "face"
-                      ? "scan-outline"
-                      : "finger-print-outline"
+                <Pressable
+                  accessibilityRole="button"
+                  hitSlop={10}
+                  onPress={() =>
+                    Alert.alert(
+                      "Forgot Password?",
+                      "Please contact your practice administrator to reset your password.",
+                    )
                   }
-                  size={22}
-                  color={TEAL}
-                />
-                <Text style={styles.biometricText}>
-                  Continue with {biometricType === "face" ? "Face ID" : "Fingerprint"}
-                </Text>
-              </Pressable>
-            </>
-          ) : null}
-        </View>
-      </View>
+                  style={({ pressed }) => [styles.forgotButton, pressed && styles.pressed]}
+                >
+                  <Text style={styles.forgotText}>Forgot Password?</Text>
+                </Pressable>
+              </View>
+            </View>
 
-      <Modal animationType="fade" transparent visible={isBioLoading}>
-        <View style={styles.backdrop}>
-          <View style={styles.loaderBox}>
-            <ActivityIndicator size="large" color={TEAL} />
-            <Text style={styles.loaderText}>Signing in...</Text>
+            <View
+              style={[
+                styles.illustrationArea,
+                isCompact && styles.illustrationAreaCompact,
+              ]}
+              pointerEvents="none"
+            >
+              <View style={[styles.circle, styles.circleBottomLeft]} />
+              <View style={[styles.circle, styles.circleDoctor]} />
+              <View style={[styles.circle, styles.circleBottomRight]} />
+              <Image
+                source={require("../../../assets/images/login-doctor.png")}
+                resizeMode="contain"
+                style={styles.doctorImage}
+              />
+            </View>
           </View>
-        </View>
-      </Modal>
-    </ScreenWrapper>
+      </KeyboardAvoidingView>
+      </SafeAreaView>
+    </AppBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  scrollContent: {
-    flexGrow: 1,
-  },
-  container: {
+  safeArea: { flex: 1, backgroundColor: "transparent" },
+  keyboardView: { flex: 1 },
+  page: {
     flex: 1,
-    minHeight: 700,
-    paddingHorizontal: 18,
-    paddingTop: 30,
-    backgroundColor: "#F5F7FC",
+    width: "100%",
+    maxWidth: 540,
+    alignSelf: "center",
     overflow: "hidden",
+    backgroundColor: "transparent",
   },
-  decorativeCircle: {
+  pageCompact: { minHeight: 0 },
+  content: { zIndex: 2, paddingHorizontal: 20, paddingTop: 36 },
+  contentCompact: { paddingHorizontal: 20, paddingTop: 18 },
+  circle: {
     position: "absolute",
-    width: 215,
-    height: 215,
-    borderRadius: 108,
-    right: -92,
-    top: -112,
-    backgroundColor: "#E8FAFA",
+    borderRadius: 999,
+    backgroundColor: "rgba(218, 239, 255, 0.60)",
   },
-  brandBlock: {
-    alignItems: "center",
-    marginTop: 22,
-  },
-  logoBox: {
-    width: 82,
-    height: 82,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-    backgroundColor: "#DDF8F1",
-  },
-  logo: {
-    width: 82,
-    height: 82,
-    resizeMode: "cover",
-  },
+  circleTop: { width: 290, height: 290, right: -108, top: -92 },
+  circleRight: { width: 118, height: 118, right: -60, top: 310 },
+  logo: { width: 168, height: 43 },
+  logoCompact: { width: 152, height: 39 },
   title: {
+    marginTop: 28,
     color: INK,
     fontSize: 28,
-    fontWeight: "700",
-    marginTop: 15,
+    lineHeight: 34,
+    fontWeight: "800",
+    letterSpacing: -1.1,
   },
+  titleCompact: { marginTop: 20, fontSize: 27, lineHeight: 33 },
   subtitle: {
-    color: "#7B849D",
-    fontSize: 14,
-    lineHeight: 20,
-    textAlign: "center",
-    marginTop: 4,
-  },
-  form: {
-    marginTop: 26,
-  },
-  label: {
-    color: INK,
-    fontSize: 13,
-    fontWeight: "600",
-    marginLeft: 1,
-  },
-  passwordLabel: {
     marginTop: 12,
-  },
-  input: {
-    width: "100%",
-    height: 52,
-    marginVertical: 7,
-    borderRadius: 12,
-    borderColor: "#DCE9EC",
-    backgroundColor: "#FFFFFF",
-  },
-  optionsRow: {
-    marginTop: 4,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  rememberButton: {
-    minHeight: 38,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#B8C4CE",
-  },
-  checkboxOn: {
-    borderColor: TEAL,
-    backgroundColor: TEAL,
-  },
-  optionText: {
-    color: "#657087",
-    fontSize: 13,
-    marginLeft: 8,
-  },
-  forgotText: {
-    color: "#12AEB1",
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  signInButton: {
-    width: "100%",
-    height: 52,
-    marginTop: 18,
-    marginBottom: 0,
-    borderRadius: 12,
-    paddingVertical: 0,
-    backgroundColor: TEAL,
-  },
-  signInText: {
+    color: "#315487",
     fontSize: 16,
-    fontWeight: "600",
+    lineHeight: 22,
   },
-  dividerRow: {
+  subtitleCompact: { marginTop: 7, fontSize: 15, lineHeight: 21 },
+  form: { marginTop: 22 },
+  formCompact: { marginTop: 16 },
+  inputBox: {
+    height: 48,
+    paddingHorizontal: 13,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 25,
+    backgroundColor: "rgba(255, 255, 255, 0.76)",
   },
-  divider: {
+  passwordBox: { marginTop: 10 },
+  inputBoxCompact: { height: 48 },
+  passwordBoxCompact: { marginTop: 10 },
+  inputError: { borderColor: "#E65353" },
+  input: {
     flex: 1,
-    height: 1,
-    backgroundColor: "#DDE3E8",
-  },
-  dividerText: {
-    color: "#7C8597",
-    fontSize: 12,
-    marginHorizontal: 12,
-  },
-  biometricButton: {
+    height: "100%",
+    marginLeft: 12,
+    color: INK,
+    fontSize: 15,
+    outlineStyle: "none",
+  } as any,
+  signInButton: {
     height: 48,
     marginTop: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#CFE7E8",
-    flexDirection: "row",
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    backgroundColor: PRIMARY,
+    shadowColor: "#087DDA",
+    shadowOffset: { width: 0, height: 7 },
+    shadowOpacity: 0.18,
+    shadowRadius: 13,
+    elevation: 4,
   },
-  biometricText: {
-    color: "#34777B",
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  pressed: {
-    opacity: 0.72,
-  },
-  backdrop: {
+  signInPressed: { opacity: 0.86, transform: [{ scale: 0.995 }] },
+  signInButtonCompact: { height: 48, marginTop: 14 },
+  signInText: { color: "#FFFFFF", fontSize: 16, fontWeight: "700" },
+  forgotButton: { minHeight: 48, alignItems: "center", justifyContent: "center" },
+  forgotText: { color: "#0676D1", fontSize: 14, fontWeight: "700" },
+  pressed: { opacity: 0.65 },
+  illustrationArea: {
     flex: 1,
-    backgroundColor: "rgba(23, 33, 61, 0.28)",
+    minHeight: 0,
+    marginTop: 8,
+    justifyContent: "flex-end",
     alignItems: "center",
-    justifyContent: "center",
   },
-  loaderBox: {
-    minWidth: 140,
-    padding: 20,
-    borderRadius: 15,
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-  },
-  loaderText: {
-    color: INK,
-    fontSize: 13,
-    marginTop: 10,
+  illustrationAreaCompact: { marginTop: 0 },
+  circleBottomLeft: { width: 106, height: 106, left: -56, top: 20 },
+  circleDoctor: { width: 330, height: 330, left: 46, top: 40 },
+  circleBottomRight: { width: 184, height: 184, right: -50, bottom: -15 },
+  doctorImage: {
+    zIndex: 2,
+    width: "96%",
+    height: "100%",
+    maxWidth: 500,
+    marginBottom: -5,
   },
 });

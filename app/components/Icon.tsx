@@ -1,5 +1,6 @@
 // ParentComponent.js
 import React, { type FC } from "react";
+import { COLORS } from "constants/Colors";
 
 import {
   Mic, femaleIcon, maleIcon
@@ -21,7 +22,7 @@ const Icon: FC<IconProps> = ({
   name,
   height,
   width,
-  iconColor = "#3162A7",
+  iconColor = COLORS.primary,
 }) => {
   // Assume you have the sub-component name stored in a variable or state
 

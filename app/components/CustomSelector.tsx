@@ -30,10 +30,11 @@ const styles = StyleSheet.create({
   button: {
     borderWidth: 1,
     borderColor: COLORS.primary,
-    borderRadius: 20,
-    paddingHorizontal: 15,
-    paddingVertical: 6,
-    marginHorizontal: 5,
+    borderRadius: 8,
+    minHeight: 40,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginRight: 8,
   },
   text: {
     color: COLORS.primary,

@@ -1,5 +1,10 @@
-// useVoiceRecorder.expo.ts
-import { Audio } from "expo-av";
+import {
+    AudioModule,
+    RecordingPresets,
+    setAudioModeAsync,
+    useAudioRecorder,
+    useAudioRecorderState,
+} from "expo-audio";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Animated, Easing, Platform } from "react-native";
 
@@ -7,69 +12,20 @@ const MIN_BAR = 2; // px
 const MAX_BAR = 80; // px
 const BARS = 30;
 
-// const recordingOptions: Audio.RecordingOptions = {
-//   android: {
-//     extension: ".m4a",
-//     outputFormat: Audio.RECORDING_OPTION_ANDROID_OUTPUT_FORMAT_MPEG_4,
-//     audioEncoder: Audio.RECORDING_OPTION_ANDROID_AUDIO_ENCODER_AAC,
-//     sampleRate: 44100,
-//     numberOfChannels: 1,
-//     bitRate: 128000,
-//   },
-//   ios: {
-//     extension: ".m4a",
-//     audioQuality: Audio.RECORDING_OPTION_IOS_AUDIO_QUALITY_HIGH,
-//     sampleRate: 44100,
-//     numberOfChannels: 1,
-//     bitRate: 128000,
-//     linearPCMBitDepth: 16,
-//     linearPCMIsBigEndian: false,
-//     linearPCMIsFloat: false,
-//   },
-//   // 👇 THIS is required for dB levels
-//   isMeteringEnabled: true,
-// };
-const recordingOptions: Audio.RecordingOptions = {
-  android: {
-    extension: ".m4a",
-    outputFormat: Audio.AndroidOutputFormat.MPEG_4,
-    audioEncoder: Audio.AndroidAudioEncoder.AAC,
-    sampleRate: 16000,
-    numberOfChannels: 1,
-    bitRate: 64000, // ✅ safe for APIs
-  },
-  ios: {
-    extension: ".m4a",
-    audioQuality: Audio.IOSAudioQuality.MEDIUM,
-    sampleRate: 16000,
-    numberOfChannels: 1,
-    bitRate: 64000,
-    outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
-  },
-  web: {
-    mimeType: "audio/webm",
-    bitsPerSecond: 64000,
-  },
-  isMeteringEnabled: true,
-};
-
 export const useVoiceRecorder = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [statusMessage, setStatusMessage] = useState("Start speaking...");
   const [timer, setTimer] = useState(0);
 
-  const [levels, setLevels] = useState<number[]>(() => new Array(BARS).fill(0));
   const [animValues] = useState(() =>
-    levels.map(() => new Animated.Value(MIN_BAR))
+    new Array(BARS).fill(0).map(() => new Animated.Value(MIN_BAR))
   );
-
-  const recordingRef = useRef<Audio.Recording | null>(null);
+  const recorder = useAudioRecorder({ ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true });
+  const recorderState = useAudioRecorderState(recorder, 100);
 
   // keep SEPARATE refs for intervals
-  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const meterIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
+  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isStartingRef = useRef(false);
 
   const formatTime = (totalSeconds: number) => {
@@ -82,21 +38,18 @@ export const useVoiceRecorder = () => {
     return `${hrs}:${mins}:${secs}`;
   };
 
-  const updateWaveform = (newValue: number) => {
+  const updateWaveform = useCallback((newValue: number) => {
     // newValue expected 0..1
-    setLevels((prev) => {
-      const updated = [...prev.slice(1), newValue];
-      updated.forEach((val, i) => {
-        Animated.timing(animValues[i], {
-          toValue: MIN_BAR + (MAX_BAR - MIN_BAR) * val,
-          duration: 120,
-          easing: Easing.out(Easing.quad),
-          useNativeDriver: false, // height cannot use native driver
-        }).start();
-      });
-      return updated;
+    animValues.forEach((value, index) => {
+      const variation = Math.max(0, Math.min(1, newValue * (0.65 + (index % 5) * 0.08)));
+      Animated.timing(value, {
+        toValue: MIN_BAR + (MAX_BAR - MIN_BAR) * variation,
+        duration: 120,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: false,
+      }).start();
     });
-  };
+  }, [animValues]);
 
   const startTimer = () => {
     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
@@ -113,32 +66,11 @@ export const useVoiceRecorder = () => {
     }
   };
 
-  const startMetering = () => {
-    if (Platform.OS === "web") return;
-    if (meterIntervalRef.current) clearInterval(meterIntervalRef.current);
-    meterIntervalRef.current = setInterval(async () => {
-      if (!recordingRef.current) return;
-      try {
-        const status = await recordingRef.current.getStatusAsync();
-        // status.metering is in dB; ~[-160, 0]
-        if (status?.isRecording && status?.metering !== undefined) {
-          const db = status.metering; // -160 .. 0
-          const clamped = Math.max(-60, Math.min(0, db)); // focus on useful range
-          const normalized = (clamped + 40) / 40; // 0..1
-          updateWaveform(normalized);
-        }
-      } catch {
-        stopMetering();
-      }
-    }, 100);
-  };
-
-  const stopMetering = () => {
-    if (meterIntervalRef.current) {
-      clearInterval(meterIntervalRef.current);
-      meterIntervalRef.current = null;
-    }
-  };
+  useEffect(() => {
+    if (Platform.OS === "web" || !recorderState.isRecording || recorderState.metering == null) return;
+    const clamped = Math.max(-60, Math.min(0, recorderState.metering));
+    updateWaveform((clamped + 40) / 40);
+  }, [recorderState.isRecording, recorderState.metering, updateWaveform]);
 
   const collapseBars = () => {
     animValues.forEach((v) =>
@@ -156,28 +88,19 @@ export const useVoiceRecorder = () => {
     isStartingRef.current = true;
 
     try {
-      const { status } = await Audio.requestPermissionsAsync();
+      const { status } = await AudioModule.requestRecordingPermissionsAsync();
       if (status !== "granted") {
         setStatusMessage("Microphone permission is required.");
         Alert.alert("Permission Denied", "Microphone permission is required.");
         return;
       }
 
-      // cleanup any earlier session
-      if (recordingRef.current) {
-        try {
-          await recordingRef.current.stopAndUnloadAsync();
-        } catch {}
-        recordingRef.current = null;
-      }
-
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
       });
-
-      const { recording } = await Audio.Recording.createAsync(recordingOptions);
-      recordingRef.current = recording;
+      await recorder.prepareToRecordAsync();
+      recorder.record();
 
       // state
       setStatusMessage("Listening...");
@@ -187,22 +110,18 @@ export const useVoiceRecorder = () => {
 
       // run loops
       startTimer();
-      startMetering();
     } catch (e) {
       setStatusMessage("Unable to start recording.");
       console.error("Start recording error:", e);
     } finally {
       isStartingRef.current = false;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [recorder]);
 
   const pauseRecording = async () => {
-    if (!recordingRef.current) return;
     try {
-      await recordingRef.current.pauseAsync();
+      recorder.pause();
       stopTimer();
-      stopMetering();
       setIsPaused(true);
       setStatusMessage("Paused");
       collapseBars(); // visually collapse like WhatsApp
@@ -212,13 +131,11 @@ export const useVoiceRecorder = () => {
   };
 
   const resumeRecording = async () => {
-    if (!recordingRef.current) return;
     try {
-      await recordingRef.current.startAsync(); // resumes a paused recording in expo-av
+      recorder.record();
       setIsPaused(false);
       setStatusMessage("Resumed");
       startTimer();
-      startMetering();
     } catch (e) {
       console.error("Resume error:", e);
     }
@@ -226,19 +143,15 @@ export const useVoiceRecorder = () => {
 
   const stopRecording = async () => {
     try {
-      if (!recordingRef.current) return null;
-
-      await recordingRef.current.stopAndUnloadAsync();
-      const uri = recordingRef.current.getURI();
+      await recorder.stop();
+      const uri = recorder.uri;
 
       stopTimer();
-      stopMetering();
       setIsRecording(false);
       setIsPaused(false);
       setStatusMessage("Stopped");
       collapseBars();
 
-      recordingRef.current = null;
       return uri ?? null;
     } catch (e) {
       console.error("Stop error:", e);
@@ -249,13 +162,9 @@ export const useVoiceRecorder = () => {
   useEffect(() => {
     return () => {
       stopTimer();
-      stopMetering();
-      if (recordingRef.current) {
-        recordingRef.current.stopAndUnloadAsync().catch(() => {});
-        recordingRef.current = null;
-      }
+      if (recorder.isRecording) recorder.stop().catch(() => {});
     };
-  }, []);
+  }, [recorder]);
 
   return {
     isRecording,

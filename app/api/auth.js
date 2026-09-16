@@ -54,7 +54,7 @@ export const getUserPracticeID = async (token) => {
   try {
     const formdata = new FormData();
     formdata.append("token", token);
-    const response = await axios.post("/auth/parseToken", formdata);
+    const response = await axios.post("/auth/token/parse", formdata);
 
     const practiceID = response.data;
     return practiceID;

@@ -1,13 +1,13 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { isNotEmpty, setHeight, setWidth } from "@lib";
+import { isNotEmpty, setWidth } from "@lib";
 import { COLORS } from "constants/Colors";
 import React, { useState } from "react";
 import {
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  useWindowDimensions,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+    useWindowDimensions,
 } from "react-native";
 import Markdown from "react-native-markdown-display";
 import RenderHTML from "react-native-render-html";
@@ -119,23 +119,25 @@ export default function CollapsibleSection({
 
 const styles = StyleSheet.create({
   container: {
-    width: setWidth(95),
-    backgroundColor: "white",
-    borderRadius: setHeight(1),
-    marginVertical: setHeight(0.5),
+    width: "100%",
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+    marginVertical: 4,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    gap: setHeight(2),
-    padding: setHeight(2),
-    margin: setHeight(1),
+    gap: 8,
+    padding: 12,
+    margin: 0,
     backgroundColor: COLORS.secondary,
-    borderRadius: setHeight(1),
+    borderRadius: 8,
   },
   title: { fontSize: 15, fontWeight: "bold", color: COLORS.primary },
-  content: { paddingHorizontal: 16, paddingBottom: 12 },
+  content: { paddingHorizontal: 12, paddingBottom: 12 },
   htmlText: {
     fontSize: 14,
     lineHeight: 22,

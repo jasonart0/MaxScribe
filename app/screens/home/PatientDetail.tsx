@@ -1,238 +1,325 @@
-// PatientDetailsScreen.tsx
-import { CustomButton, ScreenWrapper } from "@components";
+import { CustomButton } from "@components";
 import { Ionicons } from "@expo/vector-icons";
 import { isNotEmpty, isValidJSON } from "@lib";
 import { fetchPatientHistory } from "api/patients";
+import AppBackground from "components/AppBackground";
 import AvatarInitials from "components/Avatar";
+import { baseURL } from "constants/base";
 import { COLORS } from "constants/Colors";
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
     FlatList,
     Pressable,
+    SafeAreaView,
+    StatusBar,
     StyleSheet,
     Text,
     View,
 } from "react-native";
-import ContentLoader from "react-native-easy-content-loader";
 
-const PatientDetailsScreen = ({ route, navigation }) => {
-  const patient = route?.params || {};
-  const [visits, setVisits] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  const detailHistory = async () => {
-    try {
-      setLoading(true);
-      const a = await fetchPatientHistory(patient?.patient_id);
-      if (isNotEmpty(a)) {
-        setVisits(a);
-      }
-      setLoading(false);
-    } catch {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (patient?.patient_id) detailHistory();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patient?.patient_id]);
-
-  const renderItem = ({ item }) => {
-    const visitDate = new Date(item.date_created).toLocaleDateString(); // format date
-
-    return (
-      <View style={styles.card1}>
-        <View style={styles.infoContainer}>
-          <Text style={styles.date1}>{visitDate}</Text>
-          <Text style={styles.text}>Provider: {item.provider_name}</Text>
-          <Text style={styles.text}>Location: {item.location_name}</Text>
-        </View>
-
-        <Pressable
-          style={styles.historyAction}
-          disabled={!isValidJSON(item.notes_data)}
-          onPress={() => {
-            navigation.navigate("Notes", {
-              data: {
-                patient: patient,
-                transcription: "",
-                jsonData: JSON.parse(item.notes_data),
-                editAble: isNotEmpty(item.chart_id) ? false : true,
-                id: item.id,
-                aData:item
-              },
-            });
-          }}
-        >
-          <Ionicons
-            name="chevron-forward-circle"
-            size={28}
-            color={COLORS.primary}
-          />
-        </Pressable>
-      </View>
-    );
-  };
-  return (
-    <ScreenWrapper
-      title="Patient Details"
-      footerUnScrollable={() => (
-        <CustomButton
-          title={"Start Recording"}
-          style={styles.button}
-          onPress={() => navigation.navigate("Voice", { patient })}
-        />
-      )}
-    >
-      <View style={styles.container}>
-        <View style={styles.profileCard}>
-          <View style={styles.profileHeader}>
-            <AvatarInitials
-              name={patient?.name || "Unknown"}
-              size={68}
-              rounded={false}
-              color={COLORS.primary}
-              style={styles.avatar}
-            />
-            <View style={styles.profileCopy}>
-              <Text style={styles.name} numberOfLines={2}>
-                {patient?.name || "Unknown Patient"}
-              </Text>
-              <Text style={styles.specialty}>
-                {patient?.patient_status || "Patient"}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.profileDivider} />
-          <View style={styles.detailGrid}>
-            <View style={styles.detailItem}>
-              <Ionicons name="calendar-outline" size={17} color={COLORS.primary} />
-              <View>
-                <Text style={styles.detailLabel}>Date of birth</Text>
-                <Text style={styles.detailValue}>{patient?.dob || "--"}</Text>
-              </View>
-            </View>
-            <View style={styles.detailItem}>
-              <Ionicons name="id-card-outline" size={17} color={COLORS.primary} />
-              <View>
-                <Text style={styles.detailLabel}>Patient ID</Text>
-                <Text style={styles.detailValue}>
-                  {patient?.alternate_account || patient?.patient_id || "--"}
-                </Text>
-              </View>
-            </View>
-          </View>
-          <View style={styles.contactRow}>
-            <Ionicons name="call-outline" size={17} color={COLORS.primary} />
-            <Text style={styles.contactText}>
-              {patient?.cell_phone || patient?.home_phone || "No phone number"}
-            </Text>
-          </View>
-          {patient?.email ? (
-            <View style={styles.contactRow}>
-              <Ionicons name="mail-outline" size={17} color={COLORS.primary} />
-              <Text style={styles.contactText}>{patient.email}</Text>
-            </View>
-          ) : null}
-        </View>
-        <Text style={styles.sectionTitle}>Encounter History</Text>
-        <FlatList
-          data={visits}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderItem}
-          contentContainerStyle={styles.historyList}
-          ListHeaderComponent={
-            (loading && <ActivityIndicator color={COLORS.primary} />) || <></>
-          }
-          ListEmptyComponent={
-            loading && (
-              <ContentLoader
-                active
-                pRows={3}
-                tHeight={20}
-                pWidth={[120, 50, 200]}
-                listSize={6}
-              />
-            )
-          }
-        />
-      </View>
-    </ScreenWrapper>
-  );
+type Visit = {
+  id?: string | number;
+  date_created?: string;
+  provider_name?: string;
+  location_name?: string;
+  notes_data?: string;
+  chart_id?: string | number;
+  encounter_type?: string;
+  visit_type?: string;
+  appointment_type?: string;
+  [key: string]: unknown;
 };
 
-export default PatientDetailsScreen;
+function calculateAge(dob?: string) {
+  if (!dob) return "--";
+  const birthDate = new Date(dob);
+  if (Number.isNaN(birthDate.getTime())) return "--";
+
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDifference = today.getMonth() - birthDate.getMonth();
+  if (
+    monthDifference < 0 ||
+    (monthDifference === 0 && today.getDate() < birthDate.getDate())
+  ) {
+    age -= 1;
+  }
+  return Math.max(0, age);
+}
+
+function extractEncounters(response: any): Visit[] {
+  if (Array.isArray(response)) return response;
+  if (!response || typeof response !== "object") return [];
+
+  const candidates = [
+    response.data,
+    response.records,
+    response.encounters,
+    response.results,
+    response.data?.records,
+    response.data?.encounters,
+    response.data?.results,
+  ];
+
+  return candidates.find(Array.isArray) || [];
+}
+
+export default function PatientDetailsScreen({ route, navigation }: any) {
+  const patient = route?.params || {};
+  const [visits, setVisits] = useState<Visit[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [historyError, setHistoryError] = useState(false);
+
+  useEffect(() => {
+    if (!patient?.patient_id) return;
+
+    const loadHistory = async () => {
+      setLoading(true);
+      setHistoryError(false);
+      try {
+        const response = await fetchPatientHistory(patient.patient_id);
+        setVisits(extractEncounters(response));
+      } catch {
+        setHistoryError(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadHistory();
+  }, [patient?.patient_id]);
+
+  const imageUri =
+    typeof patient.pic === "string" && patient.pic
+      ? patient.pic.startsWith("http")
+        ? patient.pic
+        : `${baseURL}/${patient.pic.replace(/^\//, "")}`
+      : null;
+  const age = patient.age ?? calculateAge(patient.dob);
+  const gender = patient.gender || patient.sex || "Patient";
+  const openVisit = (item: Visit) => {
+    if (!isValidJSON(item.notes_data)) return;
+    navigation.navigate("Notes", {
+      data: {
+        patient,
+        transcription: "",
+        jsonData: JSON.parse(item.notes_data as string),
+        editAble: !isNotEmpty(item.chart_id),
+        id: item.id,
+        aData: item,
+      },
+    });
+  };
+
+  const renderVisit = ({ item }: { item: Visit }) => {
+    return (
+      <Pressable
+        disabled={!isValidJSON(item.notes_data)}
+        onPress={() => openVisit(item)}
+        style={({ pressed }) => [styles.visitCard, pressed && styles.pressed]}
+      >
+        <View style={styles.documentIcon}>
+          <Ionicons name="document-text-outline" size={29} color="#287BE4" />
+        </View>
+        <View style={styles.visitCopy}>
+          {!!item.provider_name && (
+            <Text numberOfLines={1} style={styles.providerName}>
+              Provider: {item.provider_name}
+            </Text>
+          )}
+          {!!item.location_name && (
+            <Text numberOfLines={1} style={styles.providerName}>
+              Location: {item.location_name}
+            </Text>
+          )}
+        </View>
+        <Ionicons name="chevron-forward" size={24} color="#164FD1" />
+      </Pressable>
+    );
+  };
+
+  return (
+    <AppBackground>
+      <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Pressable
+            accessibilityLabel="Go back"
+            hitSlop={12}
+            onPress={() => navigation.goBack()}
+            style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}
+          >
+            <Ionicons name="chevron-back" size={32} color="#164FD1" />
+          </Pressable>
+          <Text style={styles.headerTitle}>Patient Details</Text>
+          <View style={styles.headerButton} />
+        </View>
+
+        <FlatList
+          contentContainerStyle={styles.listContent}
+          data={visits}
+          keyExtractor={(item, index) => String(item.id ?? `visit-${index}`)}
+          ListHeaderComponent={
+            <>
+              <View style={styles.profileSection}>
+                <AvatarInitials
+                  color="#1358C8"
+                  imageUri={imageUri}
+                  name={patient.name || "Unknown"}
+                  size={72}
+                  style={styles.avatar}
+                />
+                <View style={styles.profileCopy}>
+                  <Text numberOfLines={2} style={styles.patientName}>
+                    {patient.name || "Unknown Patient"}
+                  </Text>
+                  <Text style={styles.demographics}>
+                    {age} yrs <Text style={styles.dot}>•</Text> {gender}
+                  </Text>
+                  <View style={styles.statusPill}>
+                    <Text style={styles.statusText}>
+                      {patient.patient_status || "Patient"}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+            </>
+          }
+          ListEmptyComponent={
+            loading ? (
+              <ActivityIndicator color={COLORS.primary} size="large" style={styles.loader} />
+            ) : (
+              <View style={styles.emptyState}>
+                <Ionicons name="document-text-outline" size={32} color="#7EA5DA" />
+                <Text style={styles.emptyText}>
+                  {historyError ? "Unable to load encounters. Please try again." : "No encounters available"}
+                </Text>
+              </View>
+            )
+          }
+          renderItem={renderVisit}
+          showsVerticalScrollIndicator={false}
+        />
+        <View style={styles.recordingFooter}>
+          <CustomButton
+            title="Start Recording"
+            onPress={() => navigation.navigate("Voice", { patient, autoStart: true })}
+          />
+        </View>
+      </View>
+      </SafeAreaView>
+    </AppBackground>
+  );
+}
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 16, paddingTop: 10 },
-  profileCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#E5ECEA",
+  safeArea: { flex: 1, backgroundColor: "transparent" },
+  container: { flex: 1, overflow: "hidden", backgroundColor: "transparent" },
+  circleTop: {
+    position: "absolute",
+    width: 210,
+    height: 210,
+    borderRadius: 105,
+    right: -75,
+    top: -92,
+    backgroundColor: "rgba(218, 239, 255, 0.62)",
   },
-  profileHeader: {
+  circleRight: {
+    position: "absolute",
+    width: 115,
+    height: 115,
+    borderRadius: 58,
+    right: -50,
+    top: 112,
+    backgroundColor: "rgba(218, 239, 255, 0.62)",
+  },
+  header: {
+    minHeight: 56,
+    paddingHorizontal: 15,
     flexDirection: "row",
     alignItems: "center",
-  },
-  profileCopy: {
-    flex: 1,
-    marginLeft: 13,
-    marginRight: 8,
-  },
-  name: {
-    fontSize: 19,
-    fontWeight: "700",
-    color: COLORS.deep,
-  },
-  avatar: { backgroundColor: COLORS.secondary },
-  specialty: { fontSize: 13, color: COLORS.textLight, marginTop: 4 },
-  profileDivider: { height: 1, backgroundColor: "#EDF1F0", marginVertical: 16 },
-  detailGrid: { flexDirection: "row", gap: 12 },
-  detailItem: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8 },
-  detailLabel: { color: COLORS.textLight, fontSize: 11 },
-  detailValue: { color: COLORS.deep, fontSize: 13, fontWeight: "600", marginTop: 3 },
-  contactRow: { flexDirection: "row", alignItems: "center", marginTop: 14, gap: 8 },
-  contactText: { color: COLORS.text, fontSize: 13, flex: 1 },
-  sectionTitle: { color: COLORS.deep, fontSize: 17, fontWeight: "700", marginTop: 24, marginBottom: 4 },
-  historyList: { paddingBottom: 14 },
-  button: {
-    backgroundColor: COLORS.primary,
-    padding: 14,
-    borderRadius: 10,
-    alignItems: "center",
-    marginTop: 16,
-  },
-  card1: {
-    flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: COLORS.card,
-    padding: 14,
-    marginTop: 8,
-    borderRadius: 12,
+    zIndex: 2,
+  },
+  headerButton: { width: 42, height: 42, alignItems: "center", justifyContent: "center" },
+  headerTitle: { color: "#10107A", fontSize: 22, fontWeight: "700" },
+  listContent: { paddingHorizontal: 16, paddingBottom: 28 },
+  profileSection: { flexDirection: "row", alignItems: "center", paddingHorizontal: 8 },
+  avatar: { borderWidth: 2, borderColor: "#B9DFFF", backgroundColor: "#E5F3FF" },
+  profileCopy: { flex: 1, marginLeft: 16 },
+  patientName: { color: COLORS.deep, fontSize: 18, lineHeight: 22, fontWeight: "700" },
+  demographics: { color: COLORS.primary, fontSize: 14, marginTop: 2 },
+  dot: { color: "#287BE4" },
+  statusPill: {
+    alignSelf: "flex-start",
+    marginTop: 7,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: "#E5F3FF",
+  },
+  statusText: { color: COLORS.primary, fontSize: 12 },
+  contactCard: {
+    marginTop: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#E5ECEA",
+    borderColor: "#CEE8FC",
+    backgroundColor: "rgba(255,255,255,0.88)",
+    elevation: 0,
   },
-  infoContainer: {
-    flex: 1,
+  infoRow: { minHeight: 48, flexDirection: "row", alignItems: "center" },
+  infoIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#EFF8FF",
   },
-  date1: {
-    color: COLORS.deep,
-    fontWeight: "700",
-    fontSize: 14,
-    marginBottom: 4,
+  infoCopy: { flex: 1, marginLeft: 12, paddingVertical: 6 },
+  infoLabel: { color: "#7285A8", fontSize: 12, marginBottom: 3 },
+  infoText: { color: "#102D85", fontSize: 15, lineHeight: 21 },
+  recordingFooter: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 12,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    backgroundColor: "rgba(249,252,255,0.94)",
   },
-  text: {
-    fontSize: 14,
-    color: COLORS.textLight,
+  visitCard: {
+    minHeight: 100,
+    marginTop: 11,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: "#E1EFFB",
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    elevation: 0,
   },
-  historyAction: {
-    padding: 8,
+  documentIcon: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#EFF8FF",
   },
+  visitCopy: { flex: 1, minWidth: 0, marginLeft: 15 },
+  visitDate: { color: "#174DD5", fontSize: 13, fontWeight: "500" },
+  visitType: { marginTop: 3, color: "#10107A", fontSize: 16, fontWeight: "600" },
+  providerName: { marginTop: 3, color: "#607BC2", fontSize: 14 },
+  visitMetadata: { marginTop: 4, color: "#7285A8", fontSize: 12, lineHeight: 17 },
+  loader: { marginTop: 28 },
+  emptyState: { alignItems: "center", paddingVertical: 36 },
+  emptyText: { marginTop: 10, color: "#607BC2", fontSize: 14 },
+  pressed: { opacity: 0.72 },
 });

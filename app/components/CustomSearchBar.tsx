@@ -23,7 +23,7 @@ const CustomSearchBar = ({
 }: CustomSearchBarProps) => {
   return (
     <View style={styles.container}>
-      <Ionicons name="search-outline" size={22} color="#425466" />
+      <Ionicons name="search-outline" size={22} color="#5874B7" />
       <TextInput
         placeholder={placeholder}
         value={value}
@@ -42,7 +42,7 @@ const CustomSearchBar = ({
           onPress={onPressAction}
           style={({ pressed }) => pressed && styles.pressed}
         >
-          <Ionicons name="close-circle" size={21} color="#718096" />
+          <Ionicons name="close-circle" size={21} color="#7795C2" />
         </Pressable>
       )}
     </View>
@@ -51,28 +51,23 @@ const CustomSearchBar = ({
 
 const styles = StyleSheet.create({
   container: {
-    height: 52,
+    height: 48,
     marginHorizontal: 16,
-    marginTop: 2,
-    borderRadius: 13,
+    marginTop: 0,
+    borderRadius: 8,
     paddingHorizontal: 13,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#B9D0D5",
-    shadowColor: "#667085",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 3,
-    elevation: 1,
+    borderColor: "#DCE7EF",
   },
   input: {
     flex: 1,
     height: "100%",
     marginHorizontal: 9,
-    color: "#17213D",
-    fontSize: 14,
+    color: "#1C4062",
+    fontSize: 15,
   },
   pressed: {
     opacity: 0.65,

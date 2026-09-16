@@ -1,13 +1,13 @@
 import { Ionicons } from "@expo/vector-icons"; // Expo users
-import React, { ReactNode, useEffect, useState } from "react";
+import React, { ReactNode, useState } from "react";
 import {
-  StyleProp,
-  StyleSheet,
-  TextInput,
-  TextInputProps,
-  TouchableOpacity,
-  View,
-  ViewStyle,
+    StyleProp,
+    StyleSheet,
+    TextInput,
+    TextInputProps,
+    TouchableOpacity,
+    View,
+    ViewStyle,
 } from "react-native";
 // For CLI without Expo: use `react-native-vector-icons/Ionicons`
 import { COLORS } from "constants/Colors";
@@ -44,13 +44,7 @@ const CustomInput = ({
   const [isPasswordVisible, setIsPasswordVisible] = useState(
     secureTextEntry || false
   );
-  const [isError, setIsError] = useState(false);
-
-  useEffect(() => {
-    if (required) {
-      setIsError(value?.trim() === "");
-    }
-  }, [value, required]);
+  const isError = required && value?.trim() === "";
 
   return (
     <View
@@ -66,9 +60,6 @@ const CustomInput = ({
         value={value}
         onChangeText={(text) => {
           onChangeText?.(text);
-          if (required) {
-            setIsError(text.trim() === "");
-          }
         }}
         secureTextEntry={isPasswordVisible}
         style={styles.input}
@@ -97,14 +88,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "lightgrey",
-    borderRadius: 25,
-    paddingHorizontal: 15,
-    marginVertical: 8,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    minHeight: 48,
+    marginVertical: 6,
+    backgroundColor: COLORS.card,
   },
   input: {
     flex: 1,
-    height: 45,
+    height: 46,
+    fontSize: 15,
     color: "#333",
   },
   leftIcon: {

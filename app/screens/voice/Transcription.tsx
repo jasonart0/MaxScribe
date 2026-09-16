@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     marginBottom: setHeight(2),
     alignSelf: "center",
   },
-  container: { flex: 1, backgroundColor: "#f5f5f5" },
+  container: { flex: 1, backgroundColor: COLORS.background },
   messageContainer: {
     margin: 8,
     padding: 12,

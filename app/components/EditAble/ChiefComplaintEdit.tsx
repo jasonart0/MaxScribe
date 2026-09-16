@@ -1,5 +1,6 @@
 import React from "react";
 import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { COLORS } from "constants/Colors";
 
 interface Props {
   complaints: string[]; // array of complaints (strings)
@@ -56,10 +57,10 @@ const styles = StyleSheet.create({
   },
   removeText: { color: "#900", fontWeight: "bold" },
   addButton: {
-    backgroundColor: "#e6f0ff",
+    backgroundColor: COLORS.secondary,
     padding: 12,
     borderRadius: 8,
     alignItems: "center",
   },
-  addText: { color: "#007AFF", fontWeight: "bold" },
+  addText: { color: COLORS.primary, fontWeight: "bold" },
 });

@@ -1,11 +1,11 @@
 import { CustomButton, ScreenWrapper } from "@components";
 import { Ionicons } from "@expo/vector-icons";
 import {
-  faildMessage,
-  isNotEmpty,
-  setHeight,
-  setWidth,
-  successMessage,
+    faildMessage,
+    isNotEmpty,
+    setHeight,
+    setWidth,
+    successMessage,
 } from "@lib";
 import { savePatientScribeData } from "api/Encounter";
 import ConfirmationModal from "components/confirmationModal";
@@ -15,12 +15,12 @@ import { usePracticeData } from "hooks/usePracticeData";
 import { getUserData } from "lib/authdata";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Modal,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Modal,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   modalView: {
     borderRadius: 12,
-    padding: 20,
+    padding: 16,
   },
   headerText: {
     color: COLORS.primary,
@@ -286,19 +286,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     textAlign: "center",
-    marginBottom: 15,
+    marginBottom: 12,
     color: COLORS.primary,
   },
   row: {
     marginVertical: 3,
     backgroundColor: "#fff",
     borderRadius: 8,
-    padding: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 2,
-    elevation: 3,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   label: {
     marginBottom: 5,
@@ -325,7 +322,7 @@ const styles = StyleSheet.create({
     width: setWidth(90),
     backgroundColor: COLORS.primary,
     borderRadius: setHeight(1),
-    padding: setHeight(2),
+    padding: 12,
     alignSelf: "center",
     alignItems: "center",
   },

@@ -52,9 +52,10 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: "row",
     alignItems: "center",
-    height: 64,
+    minHeight: 56,
     paddingHorizontal: 16,
-    backgroundColor: COLORS.background,
+    paddingVertical: 4,
+    backgroundColor: "transparent",
   },
   actionButton: {
     width: 42,
@@ -65,7 +66,7 @@ const styles = StyleSheet.create({
   title: {
     flex: 1,
     color: COLORS.deep,
-    fontSize: 19,
+    fontSize: 20,
     fontWeight: "700",
     textAlign: "center",
     letterSpacing: 0.2,

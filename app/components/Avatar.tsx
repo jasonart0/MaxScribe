@@ -92,7 +92,7 @@ export default function AvatarInitials({
     borderRadius: rounded ? size / 2 : Math.max(6, size * 0.12),
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#D5FBE6",
+    backgroundColor: COLORS.secondary,
     overflow: "hidden",
   };
 
