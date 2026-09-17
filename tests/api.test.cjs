@@ -65,6 +65,20 @@ test('history encodes patient IDs as a single query parameter', async () => {
   assert.equal(url, '/encounter/getPatientScribeData?patient_id=abc%26another%3Dvalue');
 });
 
+test('patient images use the document download contract', async () => {
+  let request;
+  const { fetchPatientImage } = loadApp('app/api/patients.js', {
+    'lib/authdata': {},
+    './axiosInstance': { post: async (url, body, config) => {
+      request = { url, body, config };
+      return { data: { data: { url: 'https://ehr.maximus.care/media/patient.jpg' } } };
+    } },
+  });
+  assert.equal(await fetchPatientImage(42), 'https://ehr.maximus.care/media/patient.jpg');
+  assert.deepEqual(request.body, { link: 42, document_category: 'PatientImages' });
+  assert.equal(request.config.responseType, 'blob');
+});
+
 test('all encounter lookups use the signed-in practice ID', async () => {
   const urls = [];
   const { fetchPracticeLookups } = loadApp('app/api/practice.ts', { 'lib/authdata': { getUserData: async () => ({ practice_id: 7 }) }, './axiosInstance': { get: async (url) => { urls.push(url); return { data: { data: [] } }; } } });

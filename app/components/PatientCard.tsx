@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { baseURL } from "constants/base";
 import { COLORS } from "constants/Colors";
+import { usePatientImage } from "hooks/usePatientImage";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import AvatarInitials from "./Avatar";
@@ -23,9 +24,10 @@ type PatientCardProps = {
 };
 
 export default function PatientCard({ patient, onViewPress, onCallPress }: PatientCardProps) {
-  const imageUri = patient.pic
+  const fallbackImageUri = patient.pic
     ? patient.pic.startsWith("http") ? patient.pic : `${baseURL}/${patient.pic.replace(/^\//, "")}`
     : null;
+  const imageUri = usePatientImage(patient.patient_id, fallbackImageUri);
 
   return (
     <View style={styles.card}>

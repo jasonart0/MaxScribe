@@ -22,3 +22,41 @@ export const fetchPatientHistory = async (id) => {
   assertApiSuccess(response.data);
   return response.data;
 };
+
+const imageDataUri = (value) => {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const text = value.trim();
+  if (/^(https?:\/\/|data:image\/)/i.test(text)) return text;
+  if (/^[A-Za-z0-9+/]+=*$/.test(text) && text.length > 100) return `data:image/jpeg;base64,${text}`;
+  return null;
+};
+
+const findImageValue = (value) => {
+  const direct = imageDataUri(value);
+  if (direct) return direct;
+  if (!value || typeof value !== "object") return null;
+  for (const key of ["url", "uri", "src", "image_url", "file_url", "base64", "content", "data"]) {
+    const found = findImageValue(value[key]);
+    if (found) return found;
+  }
+  return null;
+};
+
+const blobToDataUri = (blob) => new Promise((resolve, reject) => {
+  if (typeof FileReader === "undefined") return reject(new Error("Patient image format is not supported."));
+  const reader = new FileReader();
+  reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : null);
+  reader.onerror = () => reject(new Error("Patient image could not be read."));
+  reader.readAsDataURL(blob);
+});
+
+export const fetchPatientImage = async (patientId) => {
+  if (patientId == null || String(patientId).trim() === "") return null;
+  const response = await axios.post("/docs/download", {
+    link: patientId,
+    document_category: "PatientImages",
+  }, { responseType: "blob" });
+  assertApiSuccess(response.data);
+  if (response.data instanceof Blob) return blobToDataUri(response.data);
+  return findImageValue(response.data);
+};

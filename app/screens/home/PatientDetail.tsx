@@ -1,13 +1,14 @@
 import { CustomButton } from "@components";
 import { Ionicons } from "@expo/vector-icons";
 import { isNotEmpty, isValidJSON } from "@lib";
+import { useFocusEffect } from "@react-navigation/native";
 import { fetchPatientHistory } from "api/patients";
 import AppBackground from "components/AppBackground";
 import AvatarInitials from "components/Avatar";
 import { baseURL } from "constants/base";
 import { COLORS } from "constants/Colors";
+import { usePatientImage } from "hooks/usePatientImage";
 import React, { useCallback, useState } from "react";
-import { useFocusEffect } from "@react-navigation/native";
 import {
     ActivityIndicator,
     FlatList,
@@ -99,12 +100,13 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patient?.patient_id, historyAttempt]));
 
-  const imageUri =
+  const fallbackImageUri =
     typeof patient.pic === "string" && patient.pic
       ? patient.pic.startsWith("http")
         ? patient.pic
         : `${baseURL}/${patient.pic.replace(/^\//, "")}`
       : null;
+  const imageUri = usePatientImage(patient.patient_id, fallbackImageUri);
   const age = patient.age ?? calculateAge(patient.dob);
   const genderCode = patient.gender_code?.toUpperCase();
   const gender = patient.gender || patient.sex || (genderCode === "M" ? "Male" : genderCode === "F" ? "Female" : "Patient");
