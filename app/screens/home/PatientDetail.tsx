@@ -82,6 +82,28 @@ function formatVisitDate(value?: string) {
   };
 }
 
+const getStatusStyle = (status?: string) => {
+  const normalized = (status || "Patient").toLowerCase();
+
+  if (["active", "new", "in treatment", "open", "checked in"].includes(normalized)) {
+    return { pill: styles.statusPillActive, text: styles.statusTextActive };
+  }
+
+  if (["inactive", "discharged", "closed", "completed", "archived"].includes(normalized)) {
+    return { pill: styles.statusPillMuted, text: styles.statusTextMuted };
+  }
+
+  if (["pending", "follow up", "waiting", "review"].includes(normalized)) {
+    return { pill: styles.statusPillWarning, text: styles.statusTextWarning };
+  }
+
+  if (["urgent", "critical", "high risk"].includes(normalized)) {
+    return { pill: styles.statusPillDanger, text: styles.statusTextDanger };
+  }
+
+  return { pill: styles.statusPillInfo, text: styles.statusTextInfo };
+};
+
 export default function PatientDetailsScreen({ route, navigation }: any) {
   const patient = route?.params?.patient || route?.params || {};
   const [visits, setVisits] = useState<Visit[]>([]);
@@ -119,6 +141,7 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
         : `${baseURL}/${patient.pic.replace(/^\//, "")}`
       : null;
   const imageUri = usePatientImage(patient.patient_id, fallbackImageUri);
+  const statusStyle = getStatusStyle(patient.patient_status);
   const age = patient.age ?? calculateAge(patient.dob);
   const genderCode = patient.gender_code?.toUpperCase();
   const gender = patient.gender || patient.sex || (genderCode === "M" ? "Male" : genderCode === "F" ? "Female" : "Patient");
@@ -170,7 +193,7 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
       <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
       <View style={styles.container}>
-        <HeaderTitle title="Patient Details" />
+        <HeaderTitle title={patient?.name || "Patient Details"} />
 
         <FlatList
           contentContainerStyle={styles.listContent}
@@ -183,20 +206,22 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
                   color="#1358C8"
                   imageUri={imageUri}
                   name={patient.name || "Unknown"}
-                  size={56}
+                  size={40}
                   style={styles.avatar}
                 />
                 <View style={styles.profileCopy}>
-                  <Text numberOfLines={2} style={styles.patientName}>
+                  <Text numberOfLines={1} style={styles.patientName}>
                     {patient.name || "Unknown Patient"}
                   </Text>
-                  <Text style={styles.demographics}>
-                    {age} yrs <Text style={styles.dot}>•</Text> {gender}
-                  </Text>
-                  <View style={styles.statusPill}>
-                    <Text style={styles.statusText}>
-                      {patient.patient_status || "Patient"}
+                  <View style={styles.metaRow}>
+                    <Text style={styles.demographics}>
+                      {age} yrs <Text style={styles.dot}>•</Text> {gender}
                     </Text>
+                    <View style={[styles.statusPill, statusStyle.pill]}>
+                      <Text style={[styles.statusText, statusStyle.text]}>
+                        {patient.patient_status || "Patient"}
+                      </Text>
+                    </View>
                   </View>
                 </View>
               </View>
@@ -254,18 +279,27 @@ const styles = StyleSheet.create({
   profileSection: { flexDirection: "row", alignItems: "center", paddingHorizontal: 0, marginBottom: 4 },
   avatar: { borderWidth: 1, borderColor: COLORS.border, backgroundColor: "#F0F6FC" },
   profileCopy: { flex: 1, marginLeft: 10 },
-  patientName: { color: COLORS.deep, fontSize: 16, lineHeight: 20, fontWeight: "700" },
-  demographics: { color: COLORS.primary, fontSize: 12, marginTop: 2 },
+  patientName: { color: COLORS.deep, fontSize: 18, lineHeight: 22, fontWeight: "700", marginBottom: 2 },
+  metaRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  demographics: { color: COLORS.primary, fontSize: 12, flexShrink: 1 },
   dot: { color: "#287BE4" },
   statusPill: {
     alignSelf: "flex-start",
-    marginTop: 5,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 999,
-    backgroundColor: "#E5F3FF",
   },
-  statusText: { color: COLORS.primary, fontSize: 10 },
+  statusPillActive: { backgroundColor: "#DFF5F1" },
+  statusPillMuted: { backgroundColor: "#E7EDF8" },
+  statusPillWarning: { backgroundColor: "#FFF2D8" },
+  statusPillDanger: { backgroundColor: "#FFE1E1" },
+  statusPillInfo: { backgroundColor: "#E5F3FF" },
+  statusText: { fontSize: 10, textTransform: "uppercase", fontWeight: "700" },
+  statusTextActive: { color: "#189C9A" },
+  statusTextMuted: { color: "#5A6C8D" },
+  statusTextWarning: { color: "#A56500" },
+  statusTextDanger: { color: "#C63B3B" },
+  statusTextInfo: { color: "#1A73D8" },
   historyTitle: { marginTop: 20, marginBottom: 4, fontSize: 16, fontWeight: "600", color: COLORS.deep },
   retryButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: 16, marginTop: 8 },
   retryText: { color: COLORS.primary, fontWeight: "600" },
