@@ -22,7 +22,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import type { ClinicalNote, ScreenProps } from "types/navigation";
 export default function Notes({ route, navigation }: ScreenProps<"Notes">) {
-  const { patient, transcription, jsonData, editAble, aData } =
+  const { patient, transcription, jsonData, aData } =
     route.params?.data || {};
 
   const [sections, setSections] = useState(() => jsonData ? sectionConfig(jsonData) || [] : []);
@@ -37,7 +37,7 @@ export default function Notes({ route, navigation }: ScreenProps<"Notes">) {
     hasData: defaultEditData.hasData,
     notShow: defaultEditData.notShow,
   } : null);
-  const editable = editAble === undefined ? true : editAble;
+  const editable = true;
   const [openEditModal, setOpenEditModal] = useState(Boolean(defaultEditData));
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);

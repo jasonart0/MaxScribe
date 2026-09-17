@@ -72,12 +72,16 @@ export default function CollapsibleSection({
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity
-        style={styles.header}
-        onPress={() => setOpen(!open)}
-        activeOpacity={0.85}
-      >
-        <View style={styles.headerLeft}>
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.headerLeft}
+          onPress={() => {
+            if (editable && onPressEdit) {
+              onPressEdit();
+            }
+          }}
+          activeOpacity={0.85}
+        >
           <View style={styles.iconWrap}>
             <MaterialCommunityIcons
               name={icon || "folder-outline"}
@@ -86,28 +90,20 @@ export default function CollapsibleSection({
             />
           </View>
           <Text style={styles.title}>{title}</Text>
-        </View>
+        </TouchableOpacity>
 
-        <View style={styles.headerRight}>
-          {editable && (
-            <TouchableOpacity
-              onPress={(event) => {
-                event.stopPropagation();
-                onPressEdit?.();
-              }}
-              activeOpacity={0.8}
-              style={styles.button}
-            >
-              <Text style={styles.text}>Edit</Text>
-            </TouchableOpacity>
-          )}
+        <TouchableOpacity
+          onPress={() => setOpen(!open)}
+          activeOpacity={0.8}
+          style={styles.headerRight}
+        >
           <Ionicons
             name={open ? "chevron-up" : "chevron-down"}
             size={18}
             color={COLORS.primary}
           />
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
+      </View>
 
       {open && <View style={styles.content}>{items.map(renderContent)}</View>}
     </View>
@@ -161,9 +157,10 @@ const styles = StyleSheet.create({
     color: "#3C4653",
   },
   headerRight: {
-    flexDirection: "row",
+    width: 32,
+    height: 32,
     alignItems: "center",
-    gap: 10,
+    justifyContent: "center",
   },
   content: {
     paddingHorizontal: 16,
@@ -184,21 +181,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.28)",
   },
   objectText: { fontSize: 14, color: COLORS.text, marginBottom: 2 },
-  button: {
-    minWidth: 62,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "rgba(60, 70, 83, 0.12)",
-  },
-  text: {
-    color: "#3C4653",
-    fontWeight: "500",
-    fontSize: 12,
-  },
 });
 
 const markdownStyles = StyleSheet.create({
