@@ -75,7 +75,7 @@ test('patient images use the document download contract', async () => {
     } },
   });
   assert.equal(await fetchPatientImage(42), 'https://ehr.maximus.care/media/patient.jpg');
-  assert.deepEqual(request.body, { link: 42, document_category: 'PatientImages' });
+  assert.deepEqual(request.body, { link: '42.png', document_category: 'PatientImages' });
   assert.equal(request.config.responseType, 'blob');
 });
 

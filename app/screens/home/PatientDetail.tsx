@@ -192,7 +192,7 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
                   color="#1358C8"
                   imageUri={imageUri}
                   name={patient.name || "Unknown"}
-                  size={72}
+                  size={56}
                   style={styles.avatar}
                 />
                 <View style={styles.profileCopy}>
@@ -260,21 +260,21 @@ const styles = StyleSheet.create({
   },
   headerButton: { width: 42, height: 42, alignItems: "center", justifyContent: "center" },
   listContent: { paddingHorizontal: 16, paddingBottom: 28 },
-  profileSection: { flexDirection: "row", alignItems: "center", paddingHorizontal: 8 },
+  profileSection: { flexDirection: "row", alignItems: "center", paddingHorizontal: 0, marginBottom: 4 },
   avatar: { borderWidth: 1, borderColor: COLORS.border, backgroundColor: "#F0F6FC" },
-  profileCopy: { flex: 1, marginLeft: 16 },
-  patientName: { color: COLORS.deep, fontSize: 18, lineHeight: 22, fontWeight: "700" },
-  demographics: { color: COLORS.primary, fontSize: 14, marginTop: 2 },
+  profileCopy: { flex: 1, marginLeft: 10 },
+  patientName: { color: COLORS.deep, fontSize: 16, lineHeight: 20, fontWeight: "700" },
+  demographics: { color: COLORS.primary, fontSize: 12, marginTop: 2 },
   dot: { color: "#287BE4" },
   statusPill: {
     alignSelf: "flex-start",
-    marginTop: 7,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    marginTop: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 999,
     backgroundColor: "#E5F3FF",
   },
-  statusText: { color: COLORS.primary, fontSize: 12 },
+  statusText: { color: COLORS.primary, fontSize: 10 },
   historyTitle: { marginTop: 20, marginBottom: 4, fontSize: 16, fontWeight: "600", color: COLORS.deep },
   retryButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: 16, marginTop: 8 },
   retryText: { color: COLORS.primary, fontWeight: "600" },

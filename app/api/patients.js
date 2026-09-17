@@ -52,8 +52,9 @@ const blobToDataUri = (blob) => new Promise((resolve, reject) => {
 
 export const fetchPatientImage = async (patientId) => {
   if (patientId == null || String(patientId).trim() === "") return null;
+  const normalizedId = String(patientId).trim();
   const response = await axios.post("/docs/download", {
-    link: patientId,
+    link: `${normalizedId}.png`,
     document_category: "PatientImages",
   }, { responseType: "blob" });
   assertApiSuccess(response.data);

@@ -71,7 +71,10 @@ export default function AvatarInitials({
   const initials = useMemo(() => nameToInitials(name), [name]);
   const [token, setToken] = useState<string | null>(null);
   const [failedImageUri, setFailedImageUri] = useState<string | null>(null);
-  const appliedFontSize = fontSize ?? Math.round(size * 0.42);
+  const appliedFontSize = fontSize ?? Math.min(
+    Math.max(10, Math.round(size * 0.38)),
+    initials.length > 2 ? Math.round(size * 0.28) : Math.round(size * 0.42),
+  );
 
   useEffect(() => {
     let mounted = true;
