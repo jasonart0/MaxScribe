@@ -20,6 +20,7 @@ import useVoice from "hooks/useVoice";
 import { getUserData } from "lib/authdata";
 import React, { useEffect, useRef, useState } from "react";
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import type { ClinicalNote, ScreenProps } from "types/navigation";
 export default function Notes({ route, navigation }: ScreenProps<"Notes">) {
   const { patient, transcription, jsonData, aData } =
@@ -251,6 +252,7 @@ export default function Notes({ route, navigation }: ScreenProps<"Notes">) {
         void _destroyRecognizer();
         setOpenEditModal(false);
       }}>
+        <SafeAreaProvider>
         <ScreenWrapper
           title="Edit Note"
           scrollEnabled
@@ -383,6 +385,7 @@ export default function Notes({ route, navigation }: ScreenProps<"Notes">) {
             )}
           </TouchableOpacity>
         )}
+        </SafeAreaProvider>
       </Modal>
     </>
   );
