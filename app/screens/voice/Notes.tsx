@@ -346,13 +346,13 @@ export default function Notes({ route, navigation }: ScreenProps<"Notes">) {
 const styles = StyleSheet.create({
   cardList: {
     alignItems: "center",
-    paddingHorizontal: 12,
-    paddingTop: 8,
+    paddingHorizontal: 16,
+    paddingTop: 10,
     paddingBottom: 20,
   },
   procedBtn: {
-    width: setWidth(90),
-    borderRadius: setHeight(1),
+    width: "100%",
+    borderRadius: 12,
     marginBottom: setHeight(2),
   },
 });
