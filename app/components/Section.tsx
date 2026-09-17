@@ -19,8 +19,9 @@ export default function CollapsibleSection({
   editable,
   notShow = [],
   onPressEdit,
+  defaultOpen = false,
 }: any) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(defaultOpen);
   const { width } = useWindowDimensions();
 
   if (!data || (Array.isArray(data) && data.length === 0)) return null;
@@ -75,11 +76,7 @@ export default function CollapsibleSection({
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.headerLeft}
-          onPress={() => {
-            if (editable && onPressEdit) {
-              onPressEdit();
-            }
-          }}
+          onPress={() => setOpen(!open)}
           activeOpacity={0.85}
         >
           <View style={styles.iconWrap}>
@@ -93,15 +90,29 @@ export default function CollapsibleSection({
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() => setOpen(!open)}
+          onPress={() => {
+            if (editable && onPressEdit) {
+              onPressEdit();
+              return;
+            }
+            setOpen(!open);
+          }}
           activeOpacity={0.8}
           style={styles.headerRight}
         >
-          <Ionicons
-            name={open ? "chevron-up" : "chevron-down"}
-            size={18}
-            color={COLORS.primary}
-          />
+          {editable && onPressEdit ? (
+            <MaterialCommunityIcons
+              name="pencil-outline"
+              size={18}
+              color={COLORS.primary}
+            />
+          ) : (
+            <Ionicons
+              name={open ? "chevron-up" : "chevron-down"}
+              size={18}
+              color={COLORS.primary}
+            />
+          )}
         </TouchableOpacity>
       </View>
 

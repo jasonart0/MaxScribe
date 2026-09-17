@@ -182,7 +182,7 @@ export default function Notes({ route, navigation }: ScreenProps<"Notes">) {
       >
         <View style={styles.cardList}>
           {sections.map(
-            ({ key, title, data, icon, hasData, notShow }) =>
+            ({ key, title, data, icon, hasData, notShow }, index) =>
               hasData && (
                 <CollapsibleSection
                   key={key}
@@ -191,6 +191,7 @@ export default function Notes({ route, navigation }: ScreenProps<"Notes">) {
                   icon={icon}
                   editable={editable}
                   notShow={notShow}
+                  defaultOpen={index === 0}
                   onPressEdit={() => {
                     setOpenEditModal(true);
                     setEditData({ title, data, icon, hasData, notShow });
