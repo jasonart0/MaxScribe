@@ -1,8 +1,8 @@
 import { ScreenWrapper } from "@components";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import { fetchPatients, fetchPatientsbySearch } from "api/patients";
 import { apiErrorMessage } from "api/response";
-import { useFocusEffect } from "@react-navigation/native";
 import { COLORS } from "constants/Colors";
 import { useDebounce } from "hooks/useDebounce";
 import React, { useCallback, useRef, useState } from "react";
@@ -38,10 +38,14 @@ export default function HomeScreen({ navigation }: any) {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const requestId = useRef(0);
+  const loadingRef = useRef(false);
   const debouncedSearch = useDebounce(search.trim(), 500);
 
   const loadPatients = useCallback(async (query: string, isRefresh = false) => {
+    if (loadingRef.current && !isRefresh) return;
+
     const currentRequest = ++requestId.current;
+    loadingRef.current = true;
     setLoadError(null);
     if (isRefresh) {
       setRefreshing(true);
@@ -63,6 +67,7 @@ export default function HomeScreen({ navigation }: any) {
         setLoading(false);
         setRefreshing(false);
       }
+      loadingRef.current = false;
     }
   }, []);
 

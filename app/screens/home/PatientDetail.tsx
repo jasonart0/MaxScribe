@@ -8,7 +8,7 @@ import AvatarInitials from "components/Avatar";
 import { baseURL } from "constants/base";
 import { COLORS } from "constants/Colors";
 import { usePatientImage } from "hooks/usePatientImage";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
     ActivityIndicator,
     FlatList,
@@ -110,12 +110,15 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
   const [loading, setLoading] = useState(false);
   const [historyError, setHistoryError] = useState(false);
   const [historyAttempt, setHistoryAttempt] = useState(0);
+  const historyRequestRef = useRef(false);
 
   useFocusEffect(useCallback(() => {
     if (!patient?.patient_id) return;
     let cancelled = false;
 
     const loadHistory = async () => {
+      if (historyRequestRef.current) return;
+      historyRequestRef.current = true;
       setLoading(true);
       setHistoryError(false);
       try {
@@ -125,6 +128,7 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
         if (!cancelled) setHistoryError(true);
       } finally {
         if (!cancelled) setLoading(false);
+        historyRequestRef.current = false;
       }
     };
 
