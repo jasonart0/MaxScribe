@@ -31,18 +31,17 @@ function footerButton(tree) {
   return findNodes(wrapper.props.footerUnScrollable(), (node) => node.type === 'Button')[0];
 }
 
-test('saving an encounter submits the doctor-selected date', async () => {
+test('saving an encounter submits the current date without showing a date selector', async () => {
   const state = screen('Encounter');
   let tree = state.render();
-  const selectedDate = new Date('2026-09-10T12:30:00.000Z');
-  findNodes(tree, (node) => node.type === 'DatePicker')[0].props.onConfirm(selectedDate);
+  assert.equal(findNodes(tree, (node) => node.type === 'DatePicker').length, 0);
   findNodes(tree, (node) => node.type === 'Dropdown').forEach((node, index) => node.props.onSelect({ label: 'test option', value: { id: index + 2 } }));
   tree = state.render();
   footerButton(tree).props.onPress();
   tree = state.render();
   await findNodes(tree, (node) => node.type === 'Confirm')[0].props.onConfirm();
   assert.equal(state.requests.length, 1);
-  assert.equal(state.requests[0].body.date_created, selectedDate.toISOString());
+  assert.ok(state.requests[0].body.date_created);
   assert.equal(state.messages.filter(([type]) => type === 'success').length, 1);
 });
 

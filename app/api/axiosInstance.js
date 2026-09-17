@@ -1,8 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import axios from "axios";
+import { create } from "axios";
 import { baseURL } from "constants/base";
 
-const instance = axios.create({
+const instance = create({
   baseURL,
   timeout: 30000,
 });

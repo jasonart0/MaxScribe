@@ -23,7 +23,6 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import DateTimePickerModal from "react-native-modal-datetime-picker";
 import type { ScreenProps } from "types/navigation";
 
 export default function AddEncounter({ route, navigation }: ScreenProps<"AddEncounter">) {
@@ -42,17 +41,15 @@ export default function AddEncounter({ route, navigation }: ScreenProps<"AddEnco
   const savingRef = useRef(false);
   const [saving, setSaving] = useState(false);
 
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [isDatePickerVisible, setDatePickerVisible] = useState(false);
-
   const [provider, setProvider] = useState<DropdownItem | null>(null);
   const [location, setLocation] = useState<DropdownItem | null>(null);
   const [pos, setPos] = useState<DropdownItem | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
+  const canSelectProvider = Boolean(providerList?.length);
+  const canSelectPos = Boolean(posList?.length);
 
   // Validation state
   const [errors, setErrors] = useState({
-    date: false,
     provider: false,
     location: false,
     pos: false,
@@ -67,15 +64,8 @@ export default function AddEncounter({ route, navigation }: ScreenProps<"AddEnco
     setShowConfirm(false);
   };
 
-  const handleConfirmDate = (date: Date) => {
-    setSelectedDate(date);
-    setErrors((prev) => ({ ...prev, date: false }));
-    setDatePickerVisible(false);
-  };
-
   const validateFields = () => {
     const newErrors = {
-      date: !selectedDate,
       provider: !provider,
       location: !location,
       pos: !pos,
@@ -102,7 +92,7 @@ export default function AddEncounter({ route, navigation }: ScreenProps<"AddEnco
         provider_id: provider?.value?.id?.toString(),
         location_id: location?.value?.id?.toString(),
         pos_id: pos?.value?.id?.toString(),
-        date_created: selectedDate.toISOString(),
+        date_created: new Date().toISOString(),
       };
       await savePatientScribeData(scribeData);
       successMessage("✅ Synced", "Encounter note synced to EHR system.");
@@ -169,14 +159,19 @@ export default function AddEncounter({ route, navigation }: ScreenProps<"AddEnco
 
             {/* Provider */}
             <TouchableOpacity
-              onPress={() => providerSheetRef.current?.expand()}
+              onPress={() => {
+                if (!canSelectProvider) return;
+                providerSheetRef.current?.expand();
+              }}
+              disabled={!canSelectProvider}
               style={[
                 styles.selectorRow,
                 errors.provider && styles.errorRow,
+                !canSelectProvider && styles.disabledRow,
               ]}
             >
               <View style={styles.selectorIcon}>
-                <Ionicons name="person-outline" size={21} color={COLORS.primary} />
+                <Ionicons name="person-outline" size={21} color={canSelectProvider ? COLORS.primary : COLORS.border} />
               </View>
               <View style={styles.selectorCopy}>
                 <Text style={styles.selectorTitle}>Care provider</Text>
@@ -184,43 +179,27 @@ export default function AddEncounter({ route, navigation }: ScreenProps<"AddEnco
                   {provider ? provider.label : "Select provider first"}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color={provider ? COLORS.primary : COLORS.border} />
+              <Ionicons name="chevron-forward" size={20} color={canSelectProvider ? COLORS.primary : COLORS.border} />
             </TouchableOpacity>
             {errors.provider && (
               <Text style={styles.errorText}>Required *</Text>
             )}
 
-            {/* Preferred date */}
-            <TouchableOpacity
-              onPress={() => setDatePickerVisible(true)}
-              style={[
-                styles.selectorRow,
-                errors.date && styles.errorRow,
-              ]}
-            >
-              <View style={styles.selectorIcon}>
-                <Ionicons name="calendar-outline" size={21} color={COLORS.primary} />
-              </View>
-              <View style={styles.selectorCopy}>
-                <Text style={styles.selectorTitle}>Preferred date</Text>
-                <Text style={styles.selectorSubtitle}>
-                  {selectedDate.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
-            </TouchableOpacity>
-            {errors.date && <Text style={styles.errorText}>Required *</Text>}
-
             {/* Place of service */}
             <TouchableOpacity
-              onPress={() => posSheetRef.current?.expand()}
+              onPress={() => {
+                if (!canSelectPos) return;
+                posSheetRef.current?.expand();
+              }}
+              disabled={!canSelectPos}
               style={[
                 styles.selectorRow,
                 errors.pos && styles.errorRow,
+                !canSelectPos && styles.disabledRow,
               ]}
             >
               <View style={styles.selectorIcon}>
-                <Ionicons name="business-outline" size={21} color={COLORS.primary} />
+                <Ionicons name="business-outline" size={21} color={canSelectPos ? COLORS.primary : COLORS.border} />
               </View>
               <View style={styles.selectorCopy}>
                 <Text style={styles.selectorTitle}>Place of service</Text>
@@ -228,19 +207,12 @@ export default function AddEncounter({ route, navigation }: ScreenProps<"AddEnco
                   {pos ? pos.label : "Select place of service"}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color={pos ? COLORS.primary : COLORS.border} />
+              <Ionicons name="chevron-forward" size={20} color={canSelectPos ? COLORS.primary : COLORS.border} />
             </TouchableOpacity>
             {errors.pos && <Text style={styles.errorText}>Required *</Text>}
           </View>
         </View>
 
-        {/* Date Picker */}
-        <DateTimePickerModal
-          isVisible={isDatePickerVisible}
-          mode="datetime"
-          onConfirm={handleConfirmDate}
-          onCancel={() => setDatePickerVisible(false)}
-        />
       </View>
 
       {/* Dropdowns */}
@@ -329,6 +301,7 @@ const styles = StyleSheet.create({
   selectorCopy: { flex: 1, minWidth: 0, marginLeft: 12 },
   selectorTitle: { color: COLORS.deep, fontSize: 15, fontWeight: "700" },
   selectorSubtitle: { marginTop: 4, color: COLORS.textLight, fontSize: 12, lineHeight: 18 },
+  disabledRow: { opacity: 0.55 },
   errorRow: { backgroundColor: "#FFF7F7", borderBottomColor: COLORS.danger },
   buttonRow: {
     marginTop: 20,

@@ -9,7 +9,6 @@ import {
     View,
     useWindowDimensions,
 } from "react-native";
-import Markdown from "react-native-markdown-display";
 import RenderHTML from "react-native-render-html";
 
 export default function CollapsibleSection({
@@ -43,9 +42,9 @@ export default function CollapsibleSection({
           baseStyle={styles.htmlText}
         />
       ) : (
-        <Markdown key={idx} style={markdownStyles}>
+        <Text key={idx} style={styles.plainText}>
           {item}
-        </Markdown>
+        </Text>
       );
     }
 
@@ -192,15 +191,9 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.28)",
   },
   objectText: { fontSize: 14, color: COLORS.text, marginBottom: 2 },
-});
-
-const markdownStyles = StyleSheet.create({
-  body: {
+  plainText: {
     color: COLORS.text,
     fontSize: 14,
     lineHeight: 22,
-  },
-  strong: {
-    fontWeight: "bold",
   },
 });

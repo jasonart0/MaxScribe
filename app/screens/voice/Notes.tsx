@@ -27,18 +27,17 @@ export default function Notes({ route, navigation }: ScreenProps<"Notes">) {
 
   const [sections, setSections] = useState(() => jsonData ? sectionConfig(jsonData) || [] : []);
   const autoOpenGeneratedNote = Boolean(transcription && !aData && sections.length);
-  const defaultEditData = autoOpenGeneratedNote
-    ? sections.find((section) => section.hasData)
-    : null;
-  const [editData, setEditData] = useState<any>(defaultEditData ? {
-    title: defaultEditData.title,
-    data: defaultEditData.data,
-    icon: defaultEditData.icon,
-    hasData: defaultEditData.hasData,
-    notShow: defaultEditData.notShow,
-  } : null);
+  const firstSection = autoOpenGeneratedNote ? sections.find((section) => section.hasData) ?? sections[0] : null;
+  const defaultEditData = firstSection ? {
+    title: firstSection.title,
+    data: firstSection.data,
+    icon: firstSection.icon,
+    hasData: firstSection.hasData,
+    notShow: firstSection.notShow,
+  } : null;
+  const [editData, setEditData] = useState<any>(defaultEditData);
   const editable = true;
-  const [openEditModal, setOpenEditModal] = useState(Boolean(defaultEditData));
+  const [openEditModal, setOpenEditModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
 
