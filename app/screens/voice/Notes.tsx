@@ -19,16 +19,26 @@ import { COLORS } from "constants/Colors";
 import useVoice from "hooks/useVoice";
 import { getUserData } from "lib/authdata";
 import React, { useEffect, useRef, useState } from "react";
-import type { ClinicalNote, ScreenProps } from "types/navigation";
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import type { ClinicalNote, ScreenProps } from "types/navigation";
 export default function Notes({ route, navigation }: ScreenProps<"Notes">) {
   const { patient, transcription, jsonData, editAble, aData } =
     route.params?.data || {};
 
   const [sections, setSections] = useState(() => jsonData ? sectionConfig(jsonData) || [] : []);
-  const [editData, setEditData] = useState<any>(null);
+  const autoOpenGeneratedNote = Boolean(transcription && !aData && sections.length);
+  const defaultEditData = autoOpenGeneratedNote
+    ? sections.find((section) => section.hasData)
+    : null;
+  const [editData, setEditData] = useState<any>(defaultEditData ? {
+    title: defaultEditData.title,
+    data: defaultEditData.data,
+    icon: defaultEditData.icon,
+    hasData: defaultEditData.hasData,
+    notShow: defaultEditData.notShow,
+  } : null);
   const editable = editAble === undefined ? true : editAble;
-  const [openEditModal, setOpenEditModal] = useState(false);
+  const [openEditModal, setOpenEditModal] = useState(Boolean(defaultEditData));
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
 
@@ -336,6 +346,9 @@ export default function Notes({ route, navigation }: ScreenProps<"Notes">) {
 const styles = StyleSheet.create({
   cardList: {
     alignItems: "center",
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 20,
   },
   procedBtn: {
     width: setWidth(90),

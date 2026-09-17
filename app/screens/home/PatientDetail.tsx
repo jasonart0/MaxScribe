@@ -1,4 +1,4 @@
-import { CustomButton } from "@components";
+import { CustomButton, HeaderTitle } from "@components";
 import { Ionicons } from "@expo/vector-icons";
 import { isNotEmpty, isValidJSON } from "@lib";
 import { useFocusEffect } from "@react-navigation/native";
@@ -170,16 +170,7 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
       <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Pressable
-            accessibilityLabel="Go back"
-            hitSlop={12}
-            onPress={() => navigation.goBack()}
-            style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}
-          >
-            <Ionicons name="chevron-back" size={32} color="#164FD1" />
-          </Pressable>
-        </View>
+        <HeaderTitle title="Patient Details" />
 
         <FlatList
           contentContainerStyle={styles.listContent}

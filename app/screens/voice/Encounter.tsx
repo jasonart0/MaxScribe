@@ -1,5 +1,6 @@
 import { CustomButton, ScreenWrapper } from "@components";
 import { Ionicons } from "@expo/vector-icons";
+import type BottomSheet from "@gorhom/bottom-sheet";
 import {
     faildMessage,
     isNotEmpty,
@@ -8,7 +9,6 @@ import {
 } from "@lib";
 import { savePatientScribeData } from "api/Encounter";
 import { apiErrorMessage } from "api/response";
-import type BottomSheet from "@gorhom/bottom-sheet";
 import ConfirmationModal from "components/confirmationModal";
 import CustomDropdown, { type DropdownItem } from "components/CustomDropDown";
 import { COLORS } from "constants/Colors";
@@ -299,30 +299,36 @@ const styles = StyleSheet.create({
   formCard: {
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "#D9E5EC",
-    borderRadius: 8,
-    backgroundColor: "rgba(255,255,255,0.94)",
+    borderColor: "#DDE9F2",
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.96)",
+    shadowColor: "#0D2D5F",
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   selectorRow: {
-    minHeight: 64,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
+    minHeight: 68,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     flexDirection: "row",
     alignItems: "center",
     borderBottomWidth: 1,
-    borderBottomColor: "#E1EAF0",
+    borderBottomColor: "#EAEFF5",
+    backgroundColor: "#FFFFFF",
   },
   selectorIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
+    width: 42,
+    height: 42,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#EDF7F8",
+    backgroundColor: "#EEF6FF",
   },
   selectorCopy: { flex: 1, minWidth: 0, marginLeft: 12 },
-  selectorTitle: { color: COLORS.deep, fontSize: 15, fontWeight: "600" },
-  selectorSubtitle: { marginTop: 4, color: COLORS.textLight, fontSize: 12 },
+  selectorTitle: { color: COLORS.deep, fontSize: 15, fontWeight: "700" },
+  selectorSubtitle: { marginTop: 4, color: COLORS.textLight, fontSize: 12, lineHeight: 18 },
   errorRow: { backgroundColor: "#FFF7F7", borderBottomColor: COLORS.danger },
   buttonRow: {
     marginTop: 20,

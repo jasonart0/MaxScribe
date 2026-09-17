@@ -1,5 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { isNotEmpty, setWidth } from "@lib";
+import { isNotEmpty } from "@lib";
 import { COLORS } from "constants/Colors";
 import React, { useState } from "react";
 import {
@@ -72,46 +72,43 @@ export default function CollapsibleSection({
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <TouchableOpacity
         style={styles.header}
         onPress={() => setOpen(!open)}
-        activeOpacity={0.8}
+        activeOpacity={0.85}
       >
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 8,
-            width: setWidth(57),
-          }}
-        >
-          <MaterialCommunityIcons
-            name={icon || "folder-outline"}
-            size={20}
-            color={COLORS.primary}
-          />
+        <View style={styles.headerLeft}>
+          <View style={styles.iconWrap}>
+            <MaterialCommunityIcons
+              name={icon || "folder-outline"}
+              size={18}
+              color={COLORS.primary}
+            />
+          </View>
           <Text style={styles.title}>{title}</Text>
         </View>
-        {editable && (
-          <TouchableOpacity
-            onPress={onPressEdit}
-            activeOpacity={0.8}
-            style={styles.button}
-          >
-            <Text style={styles.text}>Edit</Text>
 
-          </TouchableOpacity>
-        )}
-        <Ionicons
-          style={{ marginRight: 8 }}
-          name={open ? "chevron-up" : "chevron-down"}
-          size={18}
-          color={COLORS.primary}
-        />
+        <View style={styles.headerRight}>
+          {editable && (
+            <TouchableOpacity
+              onPress={(event) => {
+                event.stopPropagation();
+                onPressEdit?.();
+              }}
+              activeOpacity={0.8}
+              style={styles.button}
+            >
+              <Text style={styles.text}>Edit</Text>
+            </TouchableOpacity>
+          )}
+          <Ionicons
+            name={open ? "chevron-up" : "chevron-down"}
+            size={18}
+            color={COLORS.primary}
+          />
+        </View>
       </TouchableOpacity>
 
-      {/* Content */}
       {open && <View style={styles.content}>{items.map(renderContent)}</View>}
     </View>
   );
@@ -120,24 +117,54 @@ export default function CollapsibleSection({
 const styles = StyleSheet.create({
   container: {
     width: "100%",
-    backgroundColor: COLORS.card,
+    marginVertical: 5,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 10,
-    marginVertical: 4,
+    borderColor: "#DCE8F6",
+    backgroundColor: "#F5F9FF",
+    overflow: "hidden",
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    gap: 8,
-    padding: 12,
-    margin: 0,
-    backgroundColor: COLORS.secondary,
-    borderRadius: 8,
+    paddingLeft: 12,
+    paddingRight: 10,
+    paddingVertical: 12,
+    backgroundColor: "#EAF3FF",
   },
-  title: { fontSize: 15, fontWeight: "bold", color: COLORS.primary },
-  content: { paddingHorizontal: 12, paddingBottom: 12 },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    minWidth: 0,
+    marginRight: 12,
+  },
+  iconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(15, 93, 223, 0.08)",
+  },
+  title: {
+    flexShrink: 1,
+    marginLeft: 10,
+    fontSize: 17,
+    fontWeight: "700",
+    color: COLORS.primary,
+  },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  content: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: "#FFFFFF",
+  },
   htmlText: {
     fontSize: 14,
     lineHeight: 22,
@@ -145,22 +172,25 @@ const styles = StyleSheet.create({
   },
   objectBox: {
     marginVertical: 6,
-    padding: 8,
+    padding: 10,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 6,
-    backgroundColor: COLORS.background,
+    borderColor: "#E2EAF4",
+    borderRadius: 8,
+    backgroundColor: "#F7FAFF",
   },
   objectText: { fontSize: 14, color: COLORS.text, marginBottom: 2 },
   button: {
-    backgroundColor: COLORS.secondary,
-    borderRadius: 5,
-    paddingHorizontal: 15,
+    minWidth: 52,
+    borderRadius: 8,
+    paddingHorizontal: 10,
     paddingVertical: 4,
+    alignItems: "center",
+    backgroundColor: "rgba(11, 95, 217, 0.08)",
   },
   text: {
     color: COLORS.primary,
-    fontWeight: "500",
+    fontWeight: "600",
+    fontSize: 12,
   },
 });
 
