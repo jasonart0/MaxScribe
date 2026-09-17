@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { COLORS } from "constants/Colors";
+import { baseURL } from "constants/base";
 import React, { useEffect, useMemo, useState } from "react";
 import {
     GestureResponderEvent,
@@ -57,23 +58,6 @@ function nameToInitials(name?: string | null) {
   return (first + last).toUpperCase();
 }
 
-// deterministic color from string (returns hex)
-function stringToColor(str: string) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    // simple hash
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    hash = hash & hash;
-  }
-  // convert to hex
-  let color = "#";
-  for (let i = 0; i < 3; i++) {
-    const value = (hash >> (i * 8)) & 0xff;
-    color += ("00" + value.toString(16)).substr(-2);
-  }
-  return color;
-}
-
 export default function AvatarInitials({
   name,
   size = DEFAULT_SIZE,
@@ -86,13 +70,14 @@ export default function AvatarInitials({
 }: AvatarInitialsProps) {
   const initials = useMemo(() => nameToInitials(name), [name]);
   const [token, setToken] = useState<string | null>(null);
+  const [failedImageUri, setFailedImageUri] = useState<string | null>(null);
   const appliedFontSize = fontSize ?? Math.round(size * 0.42);
 
   useEffect(() => {
     let mounted = true;
     AsyncStorage.getItem("token").then((storedToken) => {
       if (mounted) setToken(storedToken);
-    });
+    }).catch(() => {});
     return () => {
       mounted = false;
     };
@@ -122,14 +107,18 @@ export default function AvatarInitials({
     borderRadius: rounded ? size / 2 : Math.max(6, size * 0.12),
   };
 
-  const content = imageUri && token ? (
+  let protectedImage = false;
+  try { protectedImage = !!imageUri && new URL(imageUri).origin === new URL(baseURL).origin; }
+  catch { /* Invalid image URLs fall back to initials through onError. */ }
+  const content = imageUri && failedImageUri !== imageUri && (!protectedImage || token) ? (
     <Image
       source={{
         uri: imageUri,
-        headers: { Authorization: `Bearer ${token}` },
+        headers: protectedImage && token ? { Authorization: `Bearer ${token}` } : undefined,
       }}
       style={imageStyle}
       resizeMode="cover"
+      onError={() => setFailedImageUri(imageUri)}
     />
   ) : (
     <Text style={textStyle} accessibilityLabel={`Avatar ${initials}`}>

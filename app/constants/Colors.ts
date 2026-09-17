@@ -31,7 +31,7 @@ export const COLORS = {
   secondary: "#EAF3FB",
   deep: "#1C4062",
   card: "#FFFFFF",
-  border: "#DCE7EF",
+  border: "#E7EDF2",
   text: "#1C4062",
   textLight: "#647A90",
   mutedSurface: "#F2F7FA",

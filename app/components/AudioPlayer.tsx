@@ -1,5 +1,5 @@
 import { Entypo } from "@expo/vector-icons";
-import { setHeight } from "@lib";
+import { faildMessage, setHeight } from "@lib";
 import Slider from "@react-native-community/slider";
 import { COLORS } from "constants/Colors";
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
@@ -18,22 +18,38 @@ const PlayRecordedAudio: React.FC<Props> = ({ uri }) => {
     const prepareAudio = async () => {
       await setAudioModeAsync({
         playsInSilentMode: true,
+        allowsRecording: false,
         shouldPlayInBackground: false,
+        shouldRouteThroughEarpiece: false,
       });
+      // Expo's native player exposes volume as a writable property.
+      // eslint-disable-next-line react-hooks/immutability
+      player.volume = 1;
     };
-    prepareAudio();
-  }, []);
+    void prepareAudio().catch(() => faildMessage("Unable to prepare audio playback. Please try again."));
+  }, [player]);
 
   const togglePlayPause = async () => {
-    if (status.playing) {
-      player.pause();
-    } else {
-      player.play();
+    try {
+      if (status.playing) {
+        player.pause();
+      } else {
+        if (status.didJustFinish || (status.duration > 0 && status.currentTime >= status.duration)) {
+          await player.seekTo(0);
+        }
+        player.play();
+      }
+    } catch {
+      faildMessage("Unable to play this recording. Please try again.");
     }
   };
 
   const handleSeek = async (value: number) => {
-    await player.seekTo(value / 1000);
+    try {
+      await player.seekTo(value / 1000);
+    } catch {
+      faildMessage("Unable to seek in this recording. Please try again.");
+    }
   };
 
   const formatTime = (millis: number) => {

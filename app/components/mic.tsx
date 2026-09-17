@@ -1,6 +1,6 @@
 // MicPulse.js (Expo)
 import { MaterialIcons } from "@expo/vector-icons";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Animated,
   Easing,
@@ -25,15 +25,15 @@ export default function MicPulse({
   color = DEFAULTS.color,
 }) {
   // create animated values for each ripple
-  const ripples = useRef(
+  const [ripples] = useState(() =>
     Array.from({ length: rippleCount }, () => ({
       scale: new Animated.Value(0),
       opacity: new Animated.Value(1),
     }))
-  ).current;
+  );
 
   // mic icon bounce scale
-  const micScale = useRef(new Animated.Value(1)).current;
+  const [micScale] = useState(() => new Animated.Value(1));
 
   useEffect(() => {
     // start ripple loops with staggered delays
@@ -111,7 +111,7 @@ export default function MicPulse({
       {/* ripples */}
       {ripples.map((ripple, i) => {
         const rippleStyle = {
-          position: "absolute",
+          position: "absolute" as const,
           left: wrapperSize / 2 - size * 0.6,
           top: wrapperSize / 2 - size * 0.6,
           width: size * 1.2,
@@ -182,10 +182,5 @@ const styles = StyleSheet.create({
     backgroundColor: "#e23b3b", // solid red mic circle
     alignItems: "center",
     justifyContent: "center",
-    elevation: 6,
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
   },
 });

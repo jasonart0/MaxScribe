@@ -1,25 +1,28 @@
-
 import api from "./axiosInstance";
-// models/ORMPatientChart.ts
-// 1. Create new chart (encounter)
-// export const createNewChart = async (chart: ORMPatientChart) => {
-//   try {
-//     const response = await api.post("/encounter/createNewChart", chart);
-//     return response.data; // should contain chart_id
-//   } catch (error) {
-//     console.error("Error creating new chart:", error);
-//     throw error;
-//   }
-// };
+import { assertApiSuccess } from "./response";
 
-// 2. Save patient scribe data
-export const savePatientScribeData = async (scribeData) => {
-  try {
-    const response = await api.post("encounter/savePatientScribeData", scribeData);
-    
-    return response.data;
-  } catch (error) {
-    console.error("Error saving scribe data:", error);
-    throw error;
+export type ScribeData = {
+  id?: string | number;
+  patient_id?: string | number;
+  practice_id?: string | number;
+  notes_data: string;
+  chart_id: string;
+  created_user: string;
+  deleted: boolean;
+  provider_id?: string;
+  location_id?: string;
+  pos_id?: string;
+  date_created: string;
+};
+export const savePatientScribeData = async (scribeData: ScribeData) => {
+  for (const key of ["patient_id", "practice_id", "provider_id", "location_id", "pos_id", "created_user"] as const) {
+    if (scribeData[key] == null || String(scribeData[key]).trim() === "") {
+      throw new Error("Patient, practice, provider, location and place of service are required to save an encounter.");
+    }
   }
+  const note = JSON.parse(scribeData.notes_data);
+  if (!note || typeof note !== "object" || Array.isArray(note) || !Object.keys(note).length) throw new Error("No clinical note is available to save.");
+  const response = await api.post("/encounter/savePatientScribeData", scribeData);
+  assertApiSuccess(response.data);
+  return response.data;
 };

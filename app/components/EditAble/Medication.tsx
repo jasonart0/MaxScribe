@@ -1,23 +1,11 @@
 import React from "react";
 import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
-export default function MedicationEditor({ medications, setMedications }) {
+export default function MedicationEditor({ medications, setMedications }: { medications: Record<string, string>[]; setMedications: (value: Record<string, string>[]) => void }) {
   const handleChange = (index: number, key: string, value: string) => {
     const updated = [...medications];
-    updated[index][key] = value;
+    updated[index] = { ...updated[index], [key]: value };
     setMedications(updated);
-  };
-
-  const addMedication = () => {
-    setMedications((prev) => [...prev, { description: "", rxnorm: "" }]);
-  };
-
-  const removeMedication = (index: number) => {
-    setMedications((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const saveData = () => {
-    console.log("Updated Medications:", medications);
   };
 
   return (

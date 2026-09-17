@@ -1,10 +1,10 @@
 import React from "react";
 import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
-export default function FollowUpEditor({ followUps, setFollowUps }) {
+export default function FollowUpEditor({ followUps, setFollowUps }: { followUps: Record<string, string>[]; setFollowUps: (value: Record<string, string>[]) => void }) {
   const handleChange = (index: number, key: string, value: string) => {
     const updated = [...followUps];
-    updated[index][key] = value;
+    updated[index] = { ...updated[index], [key]: value };
     setFollowUps(updated);
   };
 
@@ -35,16 +35,6 @@ export default function FollowUpEditor({ followUps, setFollowUps }) {
             keyboardType="numeric"
             onChangeText={(text) => handleChange(index, "period", text)}
           />
-
-          {/* <Picker
-            selectedValue={item.period}
-            onValueChange={(val) => handleChange(index, "period", val)}
-            style={styles.picker}
-          >
-            <Picker.Item label="Days" value="days" />
-            <Picker.Item label="Weeks" value="weeks" />
-            <Picker.Item label="Months" value="months" />
-          </Picker> */}
 
           <TextInput
             style={[styles.input, { height: 80 }]}
@@ -77,5 +67,4 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     fontSize: 14,
   },
-  picker: { marginBottom: 10 },
 });

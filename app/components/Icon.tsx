@@ -30,7 +30,6 @@ const Icon: FC<IconProps> = ({
 
   const DynamicComponent = componentMap[name];
 
-   
   if (!DynamicComponent) {
     // Handle the case where the component name is not found
     return null;

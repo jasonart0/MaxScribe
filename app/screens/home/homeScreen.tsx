@@ -1,12 +1,15 @@
 import { ScreenWrapper } from "@components";
 import { Ionicons } from "@expo/vector-icons";
 import { fetchPatients, fetchPatientsbySearch } from "api/patients";
+import { apiErrorMessage } from "api/response";
+import { useFocusEffect } from "@react-navigation/native";
 import { COLORS } from "constants/Colors";
 import { useDebounce } from "hooks/useDebounce";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
     ActivityIndicator,
     FlatList,
+    Pressable,
     StyleSheet,
     Text,
     View,
@@ -33,9 +36,13 @@ export default function HomeScreen({ navigation }: any) {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const requestId = useRef(0);
   const debouncedSearch = useDebounce(search.trim(), 500);
 
-  const loadPatients = async (query: string, isRefresh = false) => {
+  const loadPatients = useCallback(async (query: string, isRefresh = false) => {
+    const currentRequest = ++requestId.current;
+    setLoadError(null);
     if (isRefresh) {
       setRefreshing(true);
     } else {
@@ -45,18 +52,24 @@ export default function HomeScreen({ navigation }: any) {
       const data = query
         ? await fetchPatientsbySearch(query)
         : await fetchPatients();
-      setPatients(Array.isArray(data) ? data : []);
+      if (currentRequest === requestId.current) setPatients(Array.isArray(data) ? data : []);
+    } catch (error) {
+      if (currentRequest === requestId.current) {
+        setPatients([]);
+        setLoadError(apiErrorMessage(error, "Unable to load patients. Please try again."));
+      }
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (currentRequest === requestId.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
-  };
+  }, []);
 
-  useEffect(() => {
-    // The debounced query drives the remote patient search.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadPatients(debouncedSearch);
-  }, [debouncedSearch]);
+  useFocusEffect(useCallback(() => {
+    void loadPatients(debouncedSearch);
+    return () => { requestId.current += 1; };
+  }, [debouncedSearch, loadPatients]));
 
   return (
     <ScreenWrapper
@@ -102,10 +115,14 @@ export default function HomeScreen({ navigation }: any) {
                 <View style={styles.emptyIcon}>
                   <Ionicons name="people-outline" size={30} color={ACCENT} />
                 </View>
-                <Text style={styles.emptyTitle}>No patients found</Text>
+                <Text style={styles.emptyTitle}>{loadError ? "Unable to load patients" : "No patients found"}</Text>
                 <Text style={styles.emptyCopy}>
-                  Try another name, ID, or patient status.
+                  {loadError || "Try another name, ID, or patient status."}
                 </Text>
+                {!!loadError && <Pressable accessibilityRole="button" onPress={() => loadPatients(search.trim())}
+                  style={{ minHeight: 44, justifyContent: "center", paddingHorizontal: 16 }}>
+                  <Text style={{ color: COLORS.primary }}>Retry</Text>
+                </Pressable>}
               </View>
             ) : null
           }
@@ -113,7 +130,7 @@ export default function HomeScreen({ navigation }: any) {
             <PatientCard
               patient={item}
               onCallPress={() => navigation.navigate("Voice", { patient: item, autoStart: true })}
-              onViewPress={() => navigation.navigate("PatientDetails", item)}
+              onViewPress={() => navigation.navigate("PatientDetails", { patient: item })}
             />
           )}
         />

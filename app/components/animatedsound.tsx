@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
     Animated,
     Easing,
@@ -12,14 +12,14 @@ export default function RecordingBars() {
   const [recording, setRecording] = useState(false);
 
   // Create multiple animated values for bars
-  const bars = useRef(
-    Array.from({ length: 10 }, () => new Animated.Value(10))
-  ).current;
+  const [bars] = useState(() => Array.from({ length: 10 }, () => new Animated.Value(10)));
 
-  // Animate bars with random heights
-  const animateBars = () => {
-    bars.forEach((bar) => {
-      Animated.loop(
+  useEffect(() => {
+    if (!recording) {
+      bars.forEach((bar) => bar.setValue(10));
+      return;
+    }
+    const animations = bars.map((bar) => Animated.loop(
         Animated.sequence([
           Animated.timing(bar, {
             toValue: Math.random() * 80 + 20, // random height
@@ -34,23 +34,10 @@ export default function RecordingBars() {
             useNativeDriver: false,
           }),
         ])
-      ).start();
-    });
-  };
-
-  // Stop bars animation
-  const stopBars = () => {
-    bars.forEach((bar) => bar.stopAnimation());
-  };
-
-  useEffect(() => {
-    if (recording) {
-      animateBars();
-    } else {
-      stopBars();
-      bars.forEach((bar) => bar.setValue(10));
-    }
-  }, [recording]);
+      ));
+    animations.forEach((animation) => animation.start());
+    return () => { animations.forEach((animation) => animation.stop()); };
+  }, [recording, bars]);
 
   return (
     <View style={styles.container}>

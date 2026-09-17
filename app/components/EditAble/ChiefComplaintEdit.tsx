@@ -1,6 +1,5 @@
 import React from "react";
 import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { COLORS } from "constants/Colors";
 
 interface Props {
   complaints: string[]; // array of complaints (strings)
@@ -13,7 +12,6 @@ export default function ChiefComplaintEdit({ complaints, setComplaints }: Props)
     updated[index] = value;
     setComplaints(updated);
   };
-
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -48,19 +46,4 @@ const styles = StyleSheet.create({
     padding: 8,
     fontSize: 16,
   },
-  removeButton: {
-    marginTop: 8,
-    backgroundColor: "#fdd",
-    padding: 6,
-    borderRadius: 6,
-    alignSelf: "flex-start",
-  },
-  removeText: { color: "#900", fontWeight: "bold" },
-  addButton: {
-    backgroundColor: COLORS.secondary,
-    padding: 12,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  addText: { color: COLORS.primary, fontWeight: "bold" },
 });

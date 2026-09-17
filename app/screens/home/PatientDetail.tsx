@@ -6,17 +6,18 @@ import AppBackground from "components/AppBackground";
 import AvatarInitials from "components/Avatar";
 import { baseURL } from "constants/base";
 import { COLORS } from "constants/Colors";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import {
     ActivityIndicator,
     FlatList,
     Pressable,
-    SafeAreaView,
     StatusBar,
     StyleSheet,
     Text,
     View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 type Visit = {
   id?: string | number;
@@ -60,35 +61,43 @@ function extractEncounters(response: any): Visit[] {
     response.data?.records,
     response.data?.encounters,
     response.data?.results,
+    response.data?.data,
+    response.data?.data?.records,
+    response.data?.data?.encounters,
   ];
 
   return candidates.find(Array.isArray) || [];
 }
 
 export default function PatientDetailsScreen({ route, navigation }: any) {
-  const patient = route?.params || {};
+  const patient = route?.params?.patient || route?.params || {};
   const [visits, setVisits] = useState<Visit[]>([]);
   const [loading, setLoading] = useState(false);
   const [historyError, setHistoryError] = useState(false);
+  const [historyAttempt, setHistoryAttempt] = useState(0);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     if (!patient?.patient_id) return;
+    let cancelled = false;
 
     const loadHistory = async () => {
       setLoading(true);
       setHistoryError(false);
       try {
         const response = await fetchPatientHistory(patient.patient_id);
-        setVisits(extractEncounters(response));
+        if (!cancelled) setVisits(extractEncounters(response));
       } catch {
-        setHistoryError(true);
+        if (!cancelled) setHistoryError(true);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     loadHistory();
-  }, [patient?.patient_id]);
+    return () => { cancelled = true; };
+  // Pull-to-refresh changes the callback to reload the focused screen.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patient?.patient_id, historyAttempt]));
 
   const imageUri =
     typeof patient.pic === "string" && patient.pic
@@ -97,7 +106,14 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
         : `${baseURL}/${patient.pic.replace(/^\//, "")}`
       : null;
   const age = patient.age ?? calculateAge(patient.dob);
-  const gender = patient.gender || patient.sex || "Patient";
+  const genderCode = patient.gender_code?.toUpperCase();
+  const gender = patient.gender || patient.sex || (genderCode === "M" ? "Male" : genderCode === "F" ? "Female" : "Patient");
+  const contactDetails = [
+    { label: "Date of birth", value: patient.dob, icon: "calendar-outline" },
+    { label: "Mobile phone", value: patient.cell_phone, icon: "call-outline" },
+    { label: "Home phone", value: patient.home_phone, icon: "home-outline" },
+    { label: "Patient ID", value: patient.alternate_account ?? patient.patient_id, icon: "person-outline" },
+  ] as const;
   const openVisit = (item: Visit) => {
     if (!isValidJSON(item.notes_data)) return;
     navigation.navigate("Notes", {
@@ -120,9 +136,13 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
         style={({ pressed }) => [styles.visitCard, pressed && styles.pressed]}
       >
         <View style={styles.documentIcon}>
-          <Ionicons name="document-text-outline" size={29} color="#287BE4" />
+          <Ionicons name="document-text-outline" size={22} color={COLORS.primary} />
         </View>
         <View style={styles.visitCopy}>
+          <Text style={styles.visitTitle}>
+            {item.encounter_type || item.visit_type || item.appointment_type || "Patient encounter"}
+          </Text>
+          {!!item.date_created && <Text style={styles.visitDate}>{item.date_created}</Text>}
           {!!item.location_name && <Text numberOfLines={1} style={styles.visitLocation}>
             {item.location_name}
           </Text>}
@@ -132,12 +152,12 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
             </Text>
           )}
           {!item.location_name && !!item.provider_name && (
-            <Text numberOfLines={1} style={styles.visitLocation}>
+            <Text numberOfLines={1} style={styles.providerName}>
               {item.provider_name}
             </Text>
           )}
         </View>
-        <Ionicons name="chevron-forward" size={24} color="#164FD1" />
+        <Ionicons name="chevron-forward" size={18} color={COLORS.textLight} />
       </Pressable>
     );
   };
@@ -156,8 +176,6 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
           >
             <Ionicons name="chevron-back" size={32} color="#164FD1" />
           </Pressable>
-          <Text style={styles.headerTitle}>Patient Details</Text>
-          <View style={styles.headerButton} />
         </View>
 
         <FlatList
@@ -188,7 +206,22 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
                   </View>
                 </View>
               </View>
-
+              <View style={styles.contactCard}>
+                {contactDetails.map(({ label, value, icon }) => (
+                  <View key={label} style={styles.infoRow}>
+                    <View style={styles.infoIcon}>
+                      <Ionicons name={icon} size={20} color={COLORS.primary} />
+                    </View>
+                    <View style={styles.infoCopy}>
+                      <Text style={styles.infoLabel}>{label}</Text>
+                      <Text selectable style={styles.infoText}>
+                        {value == null || value === "" ? "--" : String(value)}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+              <Text style={styles.historyTitle}>Visit history</Text>
             </>
           }
           ListEmptyComponent={
@@ -200,10 +233,18 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
                 <Text style={styles.emptyText}>
                   {historyError ? "Unable to load encounters. Please try again." : "No encounters available"}
                 </Text>
+                {historyError && (
+                  <Pressable accessibilityRole="button" onPress={() => setHistoryAttempt((attempt) => attempt + 1)}
+                    style={styles.retryButton}>
+                    <Text style={styles.retryText}>Retry</Text>
+                  </Pressable>
+                )}
               </View>
             )
           }
           renderItem={renderVisit}
+          refreshing={loading}
+          onRefresh={() => setHistoryAttempt((attempt) => attempt + 1)}
           showsVerticalScrollIndicator={false}
         />
         <View style={styles.recordingFooter}>
@@ -221,24 +262,6 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "transparent" },
   container: { flex: 1, overflow: "hidden", backgroundColor: "transparent" },
-  circleTop: {
-    position: "absolute",
-    width: 210,
-    height: 210,
-    borderRadius: 105,
-    right: -75,
-    top: -92,
-    backgroundColor: "rgba(218, 239, 255, 0.62)",
-  },
-  circleRight: {
-    position: "absolute",
-    width: 115,
-    height: 115,
-    borderRadius: 58,
-    right: -50,
-    top: 112,
-    backgroundColor: "rgba(218, 239, 255, 0.62)",
-  },
   header: {
     minHeight: 56,
     paddingHorizontal: 15,
@@ -248,10 +271,9 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   headerButton: { width: 42, height: 42, alignItems: "center", justifyContent: "center" },
-  headerTitle: { color: "#10107A", fontSize: 22, fontWeight: "700" },
   listContent: { paddingHorizontal: 16, paddingBottom: 28 },
   profileSection: { flexDirection: "row", alignItems: "center", paddingHorizontal: 8 },
-  avatar: { borderWidth: 2, borderColor: "#B9DFFF", backgroundColor: "#E5F3FF" },
+  avatar: { borderWidth: 1, borderColor: COLORS.border, backgroundColor: "#F0F6FC" },
   profileCopy: { flex: 1, marginLeft: 16 },
   patientName: { color: COLORS.deep, fontSize: 18, lineHeight: 22, fontWeight: "700" },
   demographics: { color: COLORS.primary, fontSize: 14, marginTop: 2 },
@@ -265,13 +287,16 @@ const styles = StyleSheet.create({
     backgroundColor: "#E5F3FF",
   },
   statusText: { color: COLORS.primary, fontSize: 12 },
+  historyTitle: { marginTop: 20, marginBottom: 4, fontSize: 16, fontWeight: "600", color: COLORS.deep },
+  retryButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: 16, marginTop: 8 },
+  retryText: { color: COLORS.primary, fontWeight: "600" },
   contactCard: {
     marginTop: 16,
     paddingHorizontal: 18,
     paddingVertical: 8,
-    borderRadius: 10,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#CEE8FC",
+    borderColor: COLORS.border,
     backgroundColor: "rgba(255,255,255,0.88)",
     elevation: 0,
   },
@@ -296,29 +321,31 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(249,252,255,0.94)",
   },
   visitCard: {
-    minHeight: 76,
+    minHeight: 68,
     marginTop: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#E1EFFB",
+    borderColor: COLORS.border,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
     elevation: 0,
   },
   documentIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 11,
+    width: 40,
+    height: 40,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F1F7FC",
+    backgroundColor: COLORS.mutedSurface,
   },
-  visitCopy: { flex: 1, minWidth: 0, marginLeft: 12 },
-  visitLocation: { color: COLORS.deep, fontSize: 13, fontWeight: "700" },
-  providerName: { marginTop: 3, color: COLORS.primary, fontSize: 11, fontWeight: "600" },
+  visitCopy: { flex: 1, minWidth: 0, marginLeft: 12, marginRight: 8 },
+  visitTitle: { color: COLORS.deep, fontSize: 14, lineHeight: 20, fontWeight: "500" },
+  visitDate: { marginTop: 4, color: COLORS.textLight, fontSize: 12, lineHeight: 18, fontWeight: "400" },
+  visitLocation: { marginTop: 4, color: COLORS.text, fontSize: 13, lineHeight: 19, fontWeight: "400" },
+  providerName: { marginTop: 3, color: COLORS.textLight, fontSize: 13, lineHeight: 19, fontWeight: "400" },
   loader: { marginTop: 28 },
   emptyState: { alignItems: "center", paddingVertical: 36 },
   emptyText: { marginTop: 10, color: "#607BC2", fontSize: 14 },

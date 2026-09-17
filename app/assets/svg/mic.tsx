@@ -1,7 +1,7 @@
 import { COLORS } from "constants/Colors";
 import * as React from "react";
-import Svg, { ClipPath, Defs, G, Path, Rect } from "react-native-svg";
-const Mic = ({ width, height, iconColor }) => {
+import Svg, { ClipPath, Defs, G, Path, Rect, type SvgProps } from "react-native-svg";
+const Mic = ({ width, height, iconColor }: Pick<SvgProps, "width" | "height"> & { iconColor?: string }) => {
   return (
     <Svg width={width} height={height} viewBox="0 0 52 53" fill="none">
       <G clipPath="url(#clip0_1_32)">

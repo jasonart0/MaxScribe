@@ -1,19 +1,20 @@
 import { CustomButton, ScreenWrapper } from "@components";
-import { setHeight, setWidth } from "@lib";
+import { faildMessage, setHeight, setWidth } from "@lib";
 import { generateAINotes } from "api/voice";
 import AIProcessingLoader from "components/AnimationLoad";
 import { COLORS } from "constants/Colors";
 import React from "react";
 import { FlatList, StyleSheet, Text, View } from "react-native";
+import type { ConversationMessage, ScreenProps } from "types/navigation";
 
-export default function Transcript({ route, navigation }) {
+export default function Transcript({ route, navigation }: ScreenProps<"Transcript">) {
   const { patient, transcription, showChat } = route.params?.data || {};
   const [loading, setLoading] = React.useState(false);
   const handleProceed = async () => {
+    if (loading) return;
     try {
       setLoading(true);
-      generateAINotes(transcription).then((noteData) => {
-        setLoading(false);
+      const noteData = await generateAINotes(transcription, patient?.patient_id);
         navigation.navigate("Notes", {
           data: {
             patient: patient,
@@ -21,23 +22,23 @@ export default function Transcript({ route, navigation }) {
             jsonData: noteData,
           },
         });
-      });
-      // Reset after upload
     } catch (err) {
+      faildMessage(err instanceof Error ? err.message : "Clinical note generation failed. Please try again.");
+    } finally {
       setLoading(false);
-      console.error("Upload error:", err);
     }
   };
-  const renderItem = ({ item }) => {
-    const isDoctor = item.speaker === "Doctor";
+  const renderItem = ({ item }: { item: ConversationMessage }) => {
+    const isDoctor = item.speaker.trim().toLowerCase() === "doctor";
 
     return (
       <View
         style={[
           styles.messageContainer,
-          !isDoctor ? styles.doctorMessage : styles.patientMessage,
+          isDoctor ? styles.doctorMessage : styles.patientMessage,
         ]}
       >
+        <Text style={styles.speakerText}>{item.speaker}</Text>
         <Text style={styles.messageText}>{item.text}</Text>
       </View>
     );
@@ -49,6 +50,7 @@ export default function Transcript({ route, navigation }) {
         <CustomButton
           title={"Generate Note"}
           onPress={handleProceed}
+          isLoading={loading}
           style={styles.procedBtn}
           textStyle={{ fontSize: setHeight(1.8) }}
         />
@@ -60,12 +62,15 @@ export default function Transcript({ route, navigation }) {
         data={showChat}
         renderItem={renderItem}
         keyExtractor={(_, index) => index.toString()}
+        ListEmptyComponent={() => (
+          <Text style={styles.messageText}>{transcription}</Text>
+        )}
         ListHeaderComponent={() => (
           <Text
             style={{
               color: "black",
               fontSize: 18,
-              fontWeight: "semibold",
+              fontWeight: "600",
               marginLeft: 16,
               alignSelf: "center",
               textDecorationLine: "underline",
@@ -81,63 +86,16 @@ export default function Transcript({ route, navigation }) {
 
 /* ---------- styles ---------- */
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.background },
-  topBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: setHeight(2),
-    paddingVertical: setHeight(1),
-  },
-  backBtn: {
-    borderRadius: 50,
-    padding: 12,
-    backgroundColor: "white",
-    alignItems: "center",
-    justifyContent: "center",
-    alignContent: "center",
-  },
-  backIcon: { width: 18, height: 18, tintColor: "#FFF" },
-  scroll: {
-    paddingHorizontal: setHeight(2),
-    paddingBottom: setHeight(2),
-  },
-  cardList: {
-    borderRadius: 16,
-    marginTop: 12,
-    overflow: "hidden",
-  },
-  emptyCard: { padding: 16 },
-  emptyText: { color: COLORS.textLight, fontSize: 14 },
-  button: {
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    borderRadius: 20,
-    paddingHorizontal: 15,
-    paddingVertical: 6,
-    marginHorizontal: 5,
-  },
-  text: {
-    color: COLORS.primary,
-    fontWeight: "500",
-  },
-  activeButton: {
-    backgroundColor: COLORS.primary,
-  },
-  activeText: {
-    color: "#fff",
-  },
   procedBtn: {
     width: setWidth(90),
     borderRadius: setHeight(1),
     marginBottom: setHeight(2),
     alignSelf: "center",
   },
-  container: { flex: 1, backgroundColor: COLORS.background },
   messageContainer: {
     margin: 8,
     padding: 12,
-    borderRadius: 12,
+    borderRadius: 8,
     maxWidth: "80%",
   },
   doctorMessage: {
@@ -149,4 +107,5 @@ const styles = StyleSheet.create({
     alignSelf: "flex-end",
   },
   messageText: { fontSize: 16, color: "#333" },
+  speakerText: { fontSize: 12, fontWeight: "500", color: COLORS.textLight, marginBottom: 4 },
 });

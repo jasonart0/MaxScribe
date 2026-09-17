@@ -4,7 +4,7 @@ import BottomSheet, {
 } from "@gorhom/bottom-sheet";
 import { setHeight } from "@lib";
 import { COLORS } from "constants/Colors";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState, type RefObject } from "react";
 import {
     Keyboard,
     StyleSheet,
@@ -14,7 +14,7 @@ import {
     View
 } from "react-native";
 
-interface DropdownItem {
+export interface DropdownItem {
   label: string;
   value: any;
 }
@@ -24,7 +24,7 @@ interface CustomDropdownProps {
   selectedValue: DropdownItem | null;
   onSelect: (item: DropdownItem) => void;
   placeholder?: string;
-  bottomSheetRef?:BottomSheet
+  bottomSheetRef: RefObject<BottomSheet | null>;
 }
 
 const CustomDropdown = ({
@@ -51,7 +51,7 @@ const CustomDropdown = ({
      disappearsOnIndex={-1}
       appearsOnIndex={0}
       onPress={() => {
-         Keyboard.dismiss();   
+         Keyboard.dismiss();
         props?.onPress?.();       // still close sheet
       }}
     />,
@@ -84,8 +84,8 @@ const CustomDropdown = ({
           {/* FlatList replaced with BottomSheetFlatList ✅ */}
           <BottomSheetFlatList
             data={filteredData}
-            keyExtractor={(_, index) => index.toString()}
-            renderItem={({ item }) => {
+            keyExtractor={(_: DropdownItem, index: number) => index.toString()}
+            renderItem={({ item }: { item: DropdownItem }) => {
               const isSelected = selectedValue?.value === item.value;
               return (
                 <TouchableOpacity
@@ -113,17 +113,6 @@ const CustomDropdown = ({
 export default CustomDropdown;
 
 const styles = StyleSheet.create({
-  openButton: {
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    margin: 10,
-  },
-  openButtonText: {
-    fontSize: 16,
-    color: COLORS.text,
-  },
   container: {
     flex: 1,
     padding: 16,

@@ -3,8 +3,7 @@ import { COLORS } from "constants/Colors";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-
-export default function MedicationCard({ items = [] }) {
+export default function MedicationCard({ items = [] }: { items?: string[] }) {
   if (items.length === 0) return null;
 
   return (
@@ -12,7 +11,7 @@ export default function MedicationCard({ items = [] }) {
       <Text style={styles.title}>Medication</Text>
       {items.map((txt, idx) => (
         <View key={idx} style={styles.item}>
-          <MaterialIcons name="check-circle" size={18} color={COLORS.accent} />
+          <MaterialIcons name="check-circle" size={18} color={COLORS.success} />
           <Text style={styles.itemText}>{txt}</Text>
         </View>
       ))}
@@ -23,13 +22,11 @@ export default function MedicationCard({ items = [] }) {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: COLORS.card,
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     marginTop: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
   },
   title: {
     fontSize: 16,

@@ -1,7 +1,7 @@
 import { COLORS } from "constants/Colors";
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-const CustomSelector = ({ options, selected, onSelect,containerStyle }) => {
+import { StyleSheet, Text, TouchableOpacity, View, type StyleProp, type ViewStyle } from "react-native";
+const CustomSelector = ({ options, selected, onSelect,containerStyle }: { options: string[]; selected?: string; onSelect: (option: string) => void; containerStyle?: StyleProp<ViewStyle> }) => {
   return (
     <View style={[styles.container, containerStyle]}>
       {options.map((opt) => (

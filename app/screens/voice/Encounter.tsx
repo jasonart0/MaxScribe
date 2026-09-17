@@ -4,12 +4,13 @@ import {
     faildMessage,
     isNotEmpty,
     setHeight,
-    setWidth,
     successMessage,
 } from "@lib";
 import { savePatientScribeData } from "api/Encounter";
+import { apiErrorMessage } from "api/response";
+import type BottomSheet from "@gorhom/bottom-sheet";
 import ConfirmationModal from "components/confirmationModal";
-import CustomDropdown from "components/CustomDropDown";
+import CustomDropdown, { type DropdownItem } from "components/CustomDropDown";
 import { COLORS } from "constants/Colors";
 import { usePracticeData } from "hooks/usePracticeData";
 import { getUserData } from "lib/authdata";
@@ -23,29 +24,30 @@ import {
     View,
 } from "react-native";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
+import type { ScreenProps } from "types/navigation";
 
-export default function AddEncounter({ route, navigation }) {
+export default function AddEncounter({ route, navigation }: ScreenProps<"AddEncounter">) {
   const { patient, jsonData } = route.params || {};
 
-  const { posList, providerList, locationList, loading, error } =
-    usePracticeData(patient?.patient_id || null);
+  const { posList, providerList, locationList, loading, error, retry } = usePracticeData();
   useEffect(() => {
     if (!loading && isNotEmpty(error)) {
-      faildMessage("Something went wrong. Please try again later.");
-      navigation.goBack();
+      faildMessage(error || "Unable to load encounter options.");
     }
-  }, [loading]);
+  }, [loading, error]);
 
-  const posSheetRef = useRef(null);
-  const providerSheetRef = useRef(null);
-  const locationSheetRef = useRef(null);
+  const posSheetRef = useRef<BottomSheet>(null);
+  const providerSheetRef = useRef<BottomSheet>(null);
+  const locationSheetRef = useRef<BottomSheet>(null);
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
 
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isDatePickerVisible, setDatePickerVisible] = useState(false);
 
-  const [provider, setProvider] = useState(null);
-  const [location, setLocation] = useState(null);
-  const [pos, setPos] = useState(null);
+  const [provider, setProvider] = useState<DropdownItem | null>(null);
+  const [location, setLocation] = useState<DropdownItem | null>(null);
+  const [pos, setPos] = useState<DropdownItem | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
 
   // Validation state
@@ -65,7 +67,7 @@ export default function AddEncounter({ route, navigation }) {
     setShowConfirm(false);
   };
 
-  const handleConfirmDate = (date) => {
+  const handleConfirmDate = (date: Date) => {
     setSelectedDate(date);
     setErrors((prev) => ({ ...prev, date: false }));
     setDatePickerVisible(false);
@@ -83,10 +85,13 @@ export default function AddEncounter({ route, navigation }) {
   };
 
   const handleSaveEncounter = async () => {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
     try {
-      
       const text = JSON.stringify(jsonData);
       const user = await getUserData();
+      if (!user?.username) throw new Error("Your session has expired. Please sign in again.");
       const scribeData = {
         patient_id: patient?.patient_id,
         practice_id: user?.practice_id,
@@ -97,26 +102,28 @@ export default function AddEncounter({ route, navigation }) {
         provider_id: provider?.value?.id?.toString(),
         location_id: location?.value?.id?.toString(),
         pos_id: pos?.value?.id?.toString(),
-        date_created: new Date().toISOString(),
+        date_created: selectedDate.toISOString(),
       };
-      const scribeResponse = await savePatientScribeData(scribeData);
+      await savePatientScribeData(scribeData);
       successMessage("✅ Synced", "Encounter note synced to EHR system.");
       navigation.reset({
         index: 0,
         routes: [{ name: "Home" }],
       });
-      // setShowConfirm(true);
     } catch (err) {
-      console.error("Error saving encounter:", err);
+      faildMessage(apiErrorMessage(err, "Unable to save the encounter. Please try again."));
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
   };
 
   const handleSave = () => {
+    if (saving || loading || error) return;
     if (!validateFields()) {
       return;
     }
     setShowConfirm(true);
-    // handleSaveEncounter();
   };
 
   return (
@@ -126,11 +133,17 @@ export default function AddEncounter({ route, navigation }) {
         <CustomButton
           title={"Save"}
           onPress={handleSave}
+          isLoading={saving}
+          disabled={loading || !!error}
           style={styles.buttonRow}
         />
       )}
     >
       <View style={styles.container}>
+        {!!error && <View style={{ padding: 16 }}>
+          <Text style={styles.errorText}>{error}</Text>
+          <CustomButton title="Retry" onPress={retry} />
+        </View>}
         <View style={styles.modalOverlay}>
           <View style={styles.formCard}>
             {/* Location */}
@@ -260,7 +273,7 @@ export default function AddEncounter({ route, navigation }) {
       />
 
       {/* Loading Modal */}
-      <Modal animationType="fade" transparent={true} visible={loading}>
+      <Modal animationType="fade" transparent={true} visible={loading} onRequestClose={() => {}}>
         <View style={styles.backdrop}>
           <View style={styles.loaderBox}>
             <ActivityIndicator size="large" color={COLORS.primary} />
@@ -287,17 +300,11 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     borderWidth: 1,
     borderColor: "#D9E5EC",
-    borderRadius: 16,
+    borderRadius: 8,
     backgroundColor: "rgba(255,255,255,0.94)",
   },
-  headerText: {
-    color: COLORS.primary,
-    fontSize: 18,
-    fontWeight: "600",
-    marginLeft: 16,
-  },
   selectorRow: {
-    minHeight: 72,
+    minHeight: 64,
     paddingHorizontal: 12,
     paddingVertical: 9,
     flexDirection: "row",
@@ -308,7 +315,7 @@ const styles = StyleSheet.create({
   selectorIcon: {
     width: 44,
     height: 44,
-    borderRadius: 14,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#EDF7F8",
@@ -317,24 +324,9 @@ const styles = StyleSheet.create({
   selectorTitle: { color: COLORS.deep, fontSize: 15, fontWeight: "600" },
   selectorSubtitle: { marginTop: 4, color: COLORS.textLight, fontSize: 12 },
   errorRow: { backgroundColor: "#FFF7F7", borderBottomColor: COLORS.danger },
-  title: {
-    fontSize: 18,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 12,
-    color: COLORS.primary,
-  },
   buttonRow: {
     marginTop: 20,
     borderRadius: setHeight(1),
-  },
-  saveButton: {
-    width: setWidth(90),
-    backgroundColor: COLORS.primary,
-    borderRadius: setHeight(1),
-    padding: 12,
-    alignSelf: "center",
-    alignItems: "center",
   },
   errorText: {
     color: "red",
@@ -342,13 +334,6 @@ const styles = StyleSheet.create({
     marginLeft: 5,
     marginBottom: 5,
   },
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: setHeight(2),
-    paddingVertical: setHeight(1),
-  },
-  backBtn: { borderRadius: 50, padding: 12 },
   backdrop: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.4)",
@@ -361,11 +346,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     minWidth: 120,
     alignItems: "center",
-    elevation: 5,
-    shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 6,
   },
   text: {
     marginTop: 10,

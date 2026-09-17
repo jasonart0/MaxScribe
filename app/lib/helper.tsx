@@ -1,6 +1,13 @@
 import { isNotEmpty } from "./utils";
 
-const sectionConfig = (apiResponse) => [
+const sectionConfig = (apiResponse: Record<string, any>) => [
+  {
+    key: "text",
+    icon: "note-text-outline",
+    title: "Summary",
+    hasData: isNotEmpty(apiResponse?.text),
+    data: apiResponse?.text || "",
+  },
   {
     key: "chief_complaint",
     icon: "account-alert-outline",
@@ -74,6 +81,13 @@ const sectionConfig = (apiResponse) => [
     data: apiResponse?.ros || "",
   },
   {
+    key: "assessment_plan",
+    icon: "medical-bag",
+    title: "Assessment and Plan",
+    hasData: isNotEmpty(apiResponse?.assessment_plan),
+    data: apiResponse?.assessment_plan || [],
+  },
+  {
     key: "diagnosis",
     icon: "medical-bag",
     title: "Diagnosis",
@@ -139,7 +153,7 @@ const sectionsToApiResponse = (
     }
 
     return acc;
-  }, {} as Record<string, any>);
+  }, { ...prevApiResponse } as Record<string, any>);
 };
 
 export { sectionConfig, sectionsToApiResponse };

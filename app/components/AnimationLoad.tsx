@@ -1,6 +1,6 @@
 import { setHeight } from "@lib";
 import { COLORS } from "constants/Colors";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Animated, Easing, Modal, StyleSheet, View } from "react-native";
 interface StepLoaderProps {
   visible: boolean;
@@ -18,14 +18,10 @@ export default function StepLoader({ visible, onFinish }: StepLoaderProps) {
   const [currentStep, setCurrentStep] = useState(0);
 
   // Animated values for dots
-  const animValues = [
-    useRef(new Animated.Value(0)).current,
-    useRef(new Animated.Value(0)).current,
-    useRef(new Animated.Value(0)).current,
-  ];
+  const [animValues] = useState(() => Array.from({ length: 3 }, () => new Animated.Value(0)));
 
   // Fade for step text
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [fadeAnim] = useState(() => new Animated.Value(0));
 
   // Handle steps change
   useEffect(() => {
@@ -41,7 +37,7 @@ export default function StepLoader({ visible, onFinish }: StepLoaderProps) {
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [visible]);
+  }, [visible, onFinish]);
 
   // Animate text fade on step change
   useEffect(() => {
@@ -59,13 +55,13 @@ export default function StepLoader({ visible, onFinish }: StepLoaderProps) {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [currentStep, visible]);
+  }, [currentStep, visible, fadeAnim]);
 
   // Animate dots
   useEffect(() => {
     if (!visible) return;
 
-    animValues.forEach((anim, i) => {
+    const animations = animValues.map((anim, i) =>
       Animated.loop(
         Animated.sequence([
           Animated.timing(anim, {
@@ -82,9 +78,11 @@ export default function StepLoader({ visible, onFinish }: StepLoaderProps) {
             useNativeDriver: true,
           }),
         ])
-      ).start();
-    });
-  }, [visible]);
+      )
+    );
+    animations.forEach((animation) => animation.start());
+    return () => animations.forEach((animation) => animation.stop());
+  }, [visible, animValues]);
 
   if (!visible) return null;
 
@@ -92,6 +90,7 @@ export default function StepLoader({ visible, onFinish }: StepLoaderProps) {
     <Modal
       transparent={true} // ✅ allows background to be seen
       animationType="fade"
+      onRequestClose={() => {}}
     >
       <View style={styles.overlay}>
         <View style={styles.dotsContainer}>
@@ -146,10 +145,6 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     backgroundColor: COLORS.primary, // Neon AI color
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.9,
-    shadowRadius: 10,
   },
   text: {
     marginTop: 10,

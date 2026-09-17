@@ -2,7 +2,7 @@ import { COLORS } from "constants/Colors";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-export default function Header({ name, initials }) {
+export default function Header({ name, initials }: { name: string; initials: string }) {
   return (
     <View style={styles.container}>
       <View style={styles.avatar}>

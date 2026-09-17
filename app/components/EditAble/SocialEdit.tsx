@@ -14,8 +14,7 @@ interface Props {
 }
 
 export default function SocialHistoryForm({ history, setHistory }: Props) {
-  console.log("Rendering SocialHistoryForm with history:", history);
-  
+
   const handleChange = (
     index: number,
     field: keyof SocialHistory,

@@ -3,7 +3,9 @@ import { faildMessage, isNotEmpty, successMessage } from "@lib";
 import { loginUser } from "api/auth";
 import AppBackground from "components/AppBackground";
 import { COLORS } from "constants/Colors";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { getUserData } from "lib/authdata";
+import { clearSavedLogin, getSavedLogin, saveLoginCredentials, supportsSavedPassword } from "lib/savedLogin";
 import {
     ActivityIndicator,
     Alert,
@@ -11,7 +13,6 @@ import {
     KeyboardAvoidingView,
     Platform,
     Pressable,
-    SafeAreaView,
     StatusBar,
     StyleSheet,
     Text,
@@ -19,6 +20,7 @@ import {
     useWindowDimensions,
     View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const PRIMARY = "#087DDA";
 const INK = "#062E71";
@@ -32,8 +34,36 @@ export default function LoginScreen({ navigation }: any) {
   const [isLoading, setIsLoading] = useState(false);
   const [emailError, setEmailError] = useState(false);
   const [passwordError, setPasswordError] = useState(false);
+  const [savePassword, setSavePassword] = useState(false);
+  const editedRef = useRef(false);
+
+  useEffect(() => {
+    let mounted = true;
+    void getUserData(); // Remove passwords stored by older versions in normal local storage.
+    getSavedLogin().then((saved) => {
+      if (!mounted || editedRef.current || !saved) return;
+      setEmail(saved.email);
+      setPassword(saved.password);
+      setSavePassword(supportsSavedPassword);
+    }).catch(() => {});
+    return () => { mounted = false; };
+  }, []);
+
+  const toggleSavePassword = async () => {
+    editedRef.current = true;
+    const next = !savePassword;
+    setSavePassword(next);
+    if (!next) {
+      try { await clearSavedLogin(); }
+      catch {
+        setSavePassword(true);
+        faildMessage("Unable to forget the saved login. Please try again.");
+      }
+    }
+  };
 
   const handleLogin = async () => {
+    if (isLoading) return;
     const missingEmail = !isNotEmpty(email);
     const missingPassword = !isNotEmpty(password);
     setEmailError(missingEmail);
@@ -52,7 +82,13 @@ export default function LoginScreen({ navigation }: any) {
         return;
       }
 
-      successMessage("Login Successful");
+      let saved = true;
+      try {
+        if (savePassword) await saveLoginCredentials(email.trim(), password);
+        else await clearSavedLogin();
+      } catch { saved = false; }
+      if (saved) successMessage("Login Successful");
+      else faildMessage("Signed in, but the saved password setting could not be updated.");
       navigation.replace("Home");
     } catch (error) {
       const message =
@@ -98,8 +134,11 @@ export default function LoginScreen({ navigation }: any) {
                   <TextInput
                     autoCapitalize="none"
                     autoCorrect={false}
+                    autoComplete="username"
+                    textContentType="username"
                     keyboardType="email-address"
                     onChangeText={(value) => {
+                      editedRef.current = true;
                       setEmail(value);
                       if (emailError) setEmailError(!value.trim());
                     }}
@@ -123,7 +162,11 @@ export default function LoginScreen({ navigation }: any) {
                   <Ionicons name="lock-closed-outline" size={25} color="#104A89" />
                   <TextInput
                     autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete="current-password"
+                    textContentType="password"
                     onChangeText={(value) => {
+                      editedRef.current = true;
                       setPassword(value);
                       if (passwordError) setPasswordError(!value.trim());
                     }}
@@ -149,6 +192,16 @@ export default function LoginScreen({ navigation }: any) {
                     />
                   </Pressable>
                 </View>
+
+                {supportsSavedPassword ? (
+                  <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: savePassword, disabled: isLoading }}
+                    disabled={isLoading} onPress={toggleSavePassword} style={styles.savePasswordRow}>
+                    <Ionicons name={savePassword ? "checkbox" : "square-outline"} size={22} color={PRIMARY} />
+                    <Text style={styles.savePasswordText}>Save password</Text>
+                  </Pressable>
+                ) : (
+                  <Text style={styles.passwordManagerHint}>Save your password using your browser&apos;s password manager.</Text>
+                )}
 
                 <Pressable
                   accessibilityRole="button"
@@ -225,8 +278,6 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: "rgba(218, 239, 255, 0.60)",
   },
-  circleTop: { width: 290, height: 290, right: -108, top: -92 },
-  circleRight: { width: 118, height: 118, right: -60, top: 310 },
   logo: { width: 168, height: 43 },
   logoCompact: { width: 152, height: 39 },
   title: {
@@ -276,12 +327,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: PRIMARY,
-    shadowColor: "#087DDA",
-    shadowOffset: { width: 0, height: 7 },
-    shadowOpacity: 0.18,
-    shadowRadius: 13,
-    elevation: 4,
   },
+  savePasswordRow: { flexDirection: "row", alignItems: "center", gap: 8, minHeight: 44, marginTop: 4 },
+  savePasswordText: { color: INK, fontSize: 14 },
+  passwordManagerHint: { color: COLORS.textLight, fontSize: 12, marginTop: 10 },
   signInPressed: { opacity: 0.86, transform: [{ scale: 0.995 }] },
   signInButtonCompact: { height: 48, marginTop: 14 },
   signInText: { color: "#FFFFFF", fontSize: 16, fontWeight: "700" },

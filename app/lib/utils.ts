@@ -62,11 +62,11 @@ export function isNotEmpty(value: any): boolean {
   return true;
 }
 
-export async function saveAuthdata(key, value) {
+export async function saveAuthdata(key: string, value: string) {
   await SecureStore.setItemAsync(key, value);
 }
 
-export async function getValueofAuth(key) {
+export async function getValueofAuth(key: string) {
   let result = await SecureStore.getItemAsync(key);
   if (result) {
     // alert("🔐 Here's your value 🔐 \n" + result);
@@ -89,11 +89,12 @@ export const getInitials = (name: string): string => {
 
   return (firstInitial + lastInitial).toUpperCase();
 };
-export function isValidJSON(text) {
+export function isValidJSON(text: unknown) {
+  if (typeof text !== "string" || !text.trim()) return false;
   try {
-    JSON.parse(text); // Try parsing
-    return true; // It's valid JSON
-  } catch (error) {
+    const parsed = JSON.parse(text);
+    return parsed != null && typeof parsed === "object" && !Array.isArray(parsed);
+  } catch {
     return false; // Invalid JSON
   }
 }
@@ -104,6 +105,5 @@ export const getMD5Hash = async (text: string) => {
     Crypto.CryptoDigestAlgorithm.MD5,
     text
   );
-  console.log("MD5 Hash:", hash);
   return hash;
 };

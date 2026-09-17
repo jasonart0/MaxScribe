@@ -1,0 +1,26 @@
+# Dependencies and generated checks are recreated by EAS.
+node_modules/
+.expo/
+dist/
+web-build/
+.git/
+.vscode/
+.env*.local
+*.tsbuildinfo
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+.DS_Store
+
+# Generate current Expo SDK native projects with the app.json plugins.
+/ios/
+/android/
+
+# npm's package-lock.json is the release dependency source.
+/yarn.lock

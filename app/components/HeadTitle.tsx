@@ -2,11 +2,10 @@ import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
-import { setHeight } from "@lib";
+import { faildMessage, setHeight } from "@lib";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
 import { COLORS } from "constants/Colors";
-import { saveUserData } from "lib/authdata";
 const HeaderTitle = ({ title = "", showback = true, showlogout = true }) => {
   const navigation = useNavigation();
   return (
@@ -32,12 +31,12 @@ const HeaderTitle = ({ title = "", showback = true, showlogout = true }) => {
           accessibilityLabel="Log out"
           style={styles.actionButton}
           onPress={async () => {
-            await AsyncStorage.setItem("token", "");
-            await saveUserData("", "", "", "");
-            navigation.reset({
-              index: 0,
-              routes: [{ name: "Login" }],
-            });
+            try {
+              await AsyncStorage.multiRemove(["token", "userdata"]);
+              navigation.reset({ index: 0, routes: [{ name: "Login" }] });
+            } catch {
+              faildMessage("Unable to log out. Please try again.");
+            }
           }}
         >
           <Ionicons name="log-out-outline" size={setHeight(2.8)} color={COLORS.deep} />

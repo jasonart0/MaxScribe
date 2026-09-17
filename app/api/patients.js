@@ -1,80 +1,24 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getUserData } from "lib/authdata";
 import axios from "./axiosInstance";
+import { assertApiSuccess, extractList } from "./response";
 
-export const fetchPatients = async () => {
-  try {
-    const token = await AsyncStorage.getItem("token");
-    const user = await getUserData(); // Retrieve username and id
-    const response = await axios.post(
-      "search/patient",
-      {
-        param_list: [{ name: "user_name", value: user.username }],
-        criteria: "",
-        option: "LATEST_OPENED",
-        pageIndex: 0,
-        pageSize: 0,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    // ✅ Return the actual patient array directly
-    return Array.isArray(response.data)
-      ? response.data
-      : response.data?.data || [];
-  } catch (error) {
-    console.error(
-      "❌ Fetch patients error:",
-      error?.response?.data || error.message
-    );
-    return [];
-  }
-};
-export const fetchPatientsbySearch = async (text) => {
-  try {
-    const token = await AsyncStorage.getItem("token");
-    const user = await getUserData(); // Retrieve username and id
-    const response = await axios.post(
-      "/search/patient",
-      {
-        param_list: [{ name: user.username || "criteria", value: text }],
-        pageIndex: 0,
-        pageSize: 0,
-        option: "DEFAULT",
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-    // ✅ Return the actual patient array directly
-    return Array.isArray(response.data)
-      ? response.data
-      : response.data?.data || [];
-  } catch (error) {
-    console.error(
-      "❌ Fetch patients error:",
-      error?.response?.data || error.message
-    );
-    return [];
-  }
-};
+async function searchPatients(text = "") {
+  const user = await getUserData();
+  if (!user?.username) throw new Error("Your session has expired. Please sign in again.");
+  const response = await axios.post("/search/patient", {
+    param_list: text ? [{ name: "criteria", value: text }] : [{ name: "user_name", value: user.username }],
+    criteria: text,
+    option: text ? "DEFAULT" : "LATEST_OPENED",
+    pageIndex: 0,
+    pageSize: text ? 50 : 0,
+  });
+  return extractList(response.data);
+}
+export const fetchPatients = () => searchPatients();
+export const fetchPatientsbySearch = (text) => searchPatients(text.trim());
 export const fetchPatientHistory = async (id) => {
-  try {
-    const response = await axios.get(
-      `encounter/getPatientScribeData?patient_id=${id}`
-    );
-
-    return response.data;
-  } catch (error) {
-    console.error("Error saving scribe data:", error);
-    throw error;
-  }
+  if (id == null || String(id).trim() === "") throw new Error("No patient was selected.");
+  const response = await axios.get("/encounter/getPatientScribeData?patient_id=" + encodeURIComponent(id));
+  assertApiSuccess(response.data);
+  return response.data;
 };

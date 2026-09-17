@@ -28,8 +28,9 @@ export default function PatientCard({ patient, onViewPress, onCallPress }: Patie
     : null;
 
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={`View ${patient.name || "patient"}`}
-      onPress={onViewPress} style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
+    <View style={styles.card}>
+      <Pressable accessibilityRole="button" accessibilityLabel={`View ${patient.name || "patient"}`}
+        onPress={onViewPress} style={({ pressed }) => pressed && styles.pressed}>
       <View style={styles.topRow}>
         {imageUri ? (
           <AvatarInitials imageUri={imageUri} name={patient.name} size={66} />
@@ -43,11 +44,6 @@ export default function PatientCard({ patient, onViewPress, onCallPress }: Patie
           </View>
           <Text style={styles.dob}>DOB: {patient.dob || "--"}</Text>
         </View>
-        <Pressable accessibilityRole="button" accessibilityLabel="Record patient session"
-          hitSlop={8} onPress={(event) => { event.stopPropagation(); onCallPress(); }}
-          style={({ pressed }) => [styles.micButton, pressed && styles.pressed]}>
-          <Ionicons name="mic-outline" size={27} color="#3777FA" />
-        </Pressable>
       </View>
       <View style={styles.footer}>
         <View style={styles.meta}>
@@ -63,23 +59,29 @@ export default function PatientCard({ patient, onViewPress, onCallPress }: Patie
           </Text>
         </View>
       </View>
-    </Pressable>
+      </Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="Record patient session"
+        hitSlop={8} onPress={onCallPress}
+        style={({ pressed }) => [styles.micButton, pressed && styles.pressed]}>
+        <Ionicons name="mic-outline" size={27} color="#3777FA" />
+      </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { paddingHorizontal: 12, paddingTop: 10, borderRadius: 10, backgroundColor: COLORS.card,
+  card: { paddingHorizontal: 12, paddingTop: 10, borderRadius: 8, backgroundColor: COLORS.card,
     borderWidth: 1, borderColor: COLORS.border },
   topRow: { flexDirection: "row", alignItems: "center" },
   avatar: { width: 56, height: 56, borderRadius: 28, alignItems: "center",
     justifyContent: "center", backgroundColor: "#E7F3FF" },
-  copy: { flex: 1, minWidth: 0, marginLeft: 12, marginRight: 8 },
+  copy: { flex: 1, minWidth: 0, marginLeft: 12, marginRight: 52 },
   name: { color: COLORS.deep, fontSize: 15, fontWeight: "700" },
   statusPill: { alignSelf: "flex-start", borderRadius: 12, paddingHorizontal: 10,
     paddingVertical: 2, marginTop: 4, backgroundColor: "#DFF5F1" },
   status: { color: "#189C9A", fontSize: 11, textTransform: "uppercase" },
   dob: { marginTop: 4, color: "#7285A8", fontSize: 12 },
-  micButton: { width: 44, height: 44, borderRadius: 22, alignItems: "center",
+  micButton: { position: "absolute", right: 12, top: 17, width: 44, height: 44, borderRadius: 22, alignItems: "center",
     justifyContent: "center", backgroundColor: "#E7F3FF" },
   footer: { marginTop: 9, minHeight: 36, borderTopWidth: 1, borderTopColor: "#E7EFFA",
     flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, type ReactNode } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -7,16 +7,16 @@ import {
   View,
 } from "react-native";
 
-export default function EditableSections({ sections }) {
+export default function EditableSections({ sections }: { sections: Record<string, unknown>[] }) {
   const [sectionsData, setSectionsData] = useState(sections);
 
-  const handleChange = (index, key, newVal) => {
+  const handleChange = (index: number, key: string, newVal: unknown) => {
     const updated = [...sectionsData];
-    updated[index][key] = newVal;
+    updated[index] = { ...updated[index], [key]: newVal };
     setSectionsData(updated);
   };
 
-  const renderEditableField = (value, onChange) => {
+  const renderEditableField = (value: unknown, onChange: (value: unknown) => void): ReactNode => {
     if (typeof value === "string") {
       return (
         <TextInput
@@ -79,7 +79,6 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     backgroundColor: "#f9f9f9",
-    elevation: 2,
   },
   title: { fontWeight: "bold", fontSize: 16, marginBottom: 10 },
   input: {

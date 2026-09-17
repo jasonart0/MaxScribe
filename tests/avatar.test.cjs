@@ -1,0 +1,20 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { loadApp, memoryStorage, hookHarness, findNodes, fakeNative } = require('./load-app.cjs');
+test('patient images send bearer tokens only to the API origin and fall back after errors', async () => {
+  const harness = hookHarness();
+  const Avatar = loadApp('app/components/Avatar.tsx', { react: harness.react, 'react-native': fakeNative, '@react-native-async-storage/async-storage': memoryStorage({ token: 'test-token' }) }).default;
+  const props = { name: 'Test Patient', imageUri: 'https://ehr.maximus.care/media/test.png' };
+  harness.render(() => Avatar(props));
+  await new Promise((resolve) => setImmediate(resolve));
+  let tree = harness.render(() => Avatar(props));
+  assert.equal(findNodes(tree, (node) => node.type === 'Image')[0].props.source.headers.Authorization, 'Bearer test-token');
+  const external = { ...props, imageUri: 'https://example.org/test.png' };
+  tree = harness.render(() => Avatar(external));
+  const image = findNodes(tree, (node) => node.type === 'Image')[0];
+  assert.equal(image.props.source.headers, undefined);
+  image.props.onError();
+  tree = harness.render(() => Avatar(external));
+  assert.equal(findNodes(tree, (node) => node.type === 'Image').length, 0);
+  assert.equal(findNodes(tree, (node) => node.type === 'Text').length, 1);
+});

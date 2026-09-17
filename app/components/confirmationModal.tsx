@@ -20,6 +20,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
       animationType="fade"
       transparent={true}
       visible={visible}
+      onRequestClose={onCancel}
       statusBarTranslucent
     >
       <View style={styles.backdrop}>
@@ -62,11 +63,6 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 12,
     width: "80%",
-    elevation: 5,
-    shadowColor: "#000",
-    shadowOpacity: 0.25,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 6,
     paddingVertical: 20,
   },
   message: {

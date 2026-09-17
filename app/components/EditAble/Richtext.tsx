@@ -13,8 +13,8 @@ export default function EditableNote({
   setHtmlContent,
   results,
   finalResult,
-}) {
-  const richText = useRef(null);
+}: { htmlContent: string; setHtmlContent: (value: string) => void; results?: string; finalResult?: string }) {
+  const richText = useRef<RichEditor>(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     if (finalResult && richText.current) {

@@ -1,17 +1,16 @@
-// import { localImages } from "@assets";
 import { CustomButton, ScreenWrapper } from "@components";
 import { Ionicons } from "@expo/vector-icons";
 import { faildMessage, setHeight, setWidth } from "@lib";
-import { useNavigation, useRoute } from "@react-navigation/native";
 import { generateChat, uploadVoiceFile } from "api/voice";
 import AIProcessingLoader from "components/AnimationLoad";
 import PlayRecordedAudio from "components/AudioPlayer";
+import RecordingWaveform from "components/RecordingWaveform";
 import { COLORS } from "constants/Colors";
 import { SAMPLE_NOTE } from "constants/dummyData";
 import { useVoiceRecorder } from "hooks/useAudioRecording";
+import type { ScreenProps } from "types/navigation";
 import * as React from "react";
 import {
-    Animated,
     Pressable,
     StyleSheet,
     Text,
@@ -19,26 +18,24 @@ import {
     View,
     useWindowDimensions,
 } from "react-native";
-import Svg, { Circle, Defs, LinearGradient, Stop } from "react-native-svg";
-function VoiceRecordScreen() {
+function VoiceRecordScreen({ navigation, route }: ScreenProps<"Voice">) {
   const { height, width } = useWindowDimensions();
-  const heroSize = Math.min(270, width * 0.66, height * 0.28);
-  const navigation = useNavigation();
-  const route = useRoute();
+  const heroSize = Math.min(220, width * 0.58, height * 0.24);
   const patient = route.params?.patient || {};
   const autoStart = route.params?.autoStart === true;
   const [loading, setLoading] = React.useState(false);
   const {
     isRecording,
     isPaused,
+    isBusy,
+    recordingError,
     statusMessage,
     timer,
-    setTimer,
+    metering,
     formatTime,
     startRecording,
     pauseRecording,
     resumeRecording,
-    animValues,
     stopRecording,
   } = useVoiceRecorder();
 
@@ -53,56 +50,43 @@ function VoiceRecordScreen() {
   }, [autoStart, startRecording]);
 
   const toggleRecording = async () => {
+    if (isBusy || loading) return;
     if (isRecording) {
       const uri = await stopRecording();
       if (uri) setRecordedUri(uri); // store the file
     } else {
       setRecordedUri(null); // reset old file
-      startRecording();
+      await startRecording();
     }
   };
 
   const handleProceed = async () => {
-    if (!recordedUri) return;
+    if (!recordedUri || loading) return;
 
     try {
       setLoading(true);
-      uploadVoiceFile(recordedUri)
-        .then((d) => {
-          generateChat(d)
-            .then((data) => {
-
-              setLoading(false);
-              setRecordedUri(null);
-              setTimer(0);
-              navigation.navigate("Transcript", {
-                data: {
-                  patient: patient,
-                  transcription: d,
-                  showChat: data,
-                },
-              });
-            })
-            .catch(() => {
-              setLoading(false);
-              faildMessage("Something went wrong. Please try again later.");
-            });
-        })
-        .catch(() => {
-          setLoading(false);
-          faildMessage("Something went wrong. Please try again later.");
-        });
-      // Reset after upload
+      const transcription = await uploadVoiceFile(recordedUri);
+      let showChat = [];
+      try {
+        showChat = await generateChat(transcription);
+      } catch (error) {
+        faildMessage(error instanceof Error ? error.message : "Conversation generation failed. Your transcript is still available.");
+      }
+      navigation.navigate("Transcript", {
+        data: { patient, transcription, showChat },
+      });
+      // Keep the clip available when the user returns from the transcript.
     } catch (err) {
+      faildMessage(err instanceof Error ? err.message : "Audio transcription failed. Please try again.");
+    } finally {
       setLoading(false);
-      console.error("Upload error:", err);
     }
   };
   const handleSampleload = async () => {
+    if (loading) return;
     try {
       setLoading(true);
-      generateChat(SAMPLE_NOTE).then((data) => {
-        setLoading(false);
+      const data = await generateChat(SAMPLE_NOTE);
         navigation.navigate("Transcript", {
           data: {
             patient: patient,
@@ -110,11 +94,11 @@ function VoiceRecordScreen() {
             showChat: data,
           },
         });
-      });
       // Keep the recorded clip available while the sample is being processed.
     } catch (err) {
+      faildMessage(err instanceof Error ? err.message : "Sample processing failed. Please try again.");
+    } finally {
       setLoading(false);
-      console.error("Upload error:", err);
     }
   };
 
@@ -145,13 +129,13 @@ function VoiceRecordScreen() {
                 style={styles.footerAction}
                 textStyle={styles.footerActionText}
               />
-              <CustomButton
+              {__DEV__ && <CustomButton
                 title={"Load Sample"}
                 onPress={handleSampleload}
                 isLoading={loading}
                 style={styles.footerAction}
                 textStyle={styles.footerActionText}
-              />
+              />}
               </View>
             </View>
           )
@@ -165,41 +149,19 @@ function VoiceRecordScreen() {
           <View style={[styles.hero, { width: heroSize, height: heroSize }]}>
             <View style={styles.innerHalo} />
             <View style={styles.micCircle}>
-              <Svg width="100%" height="100%" viewBox="0 0 200 200" style={StyleSheet.absoluteFill}>
-                <Defs>
-                  <LinearGradient id="micGradient" x1="0" y1="0" x2="1" y2="1">
-                    <Stop offset="0" stopColor="#449DEC" />
-                    <Stop offset="1" stopColor="#2847CD" />
-                  </LinearGradient>
-                </Defs>
-                <Circle cx="100" cy="100" r="98" fill="url(#micGradient)" stroke="#FFFFFF" strokeWidth="2" />
-              </Svg>
               <Ionicons name="mic" size={heroSize * 0.30} color="#FFFFFF" />
             </View>
           </View>
           <Text style={styles.listeningText}>
             {isPaused ? "Paused" : isRecording ? "Listening..." : recordedUri ? "Recording Complete" : "Ready to Record"}
           </Text>
-            <View style={styles.waveform}>
-              {animValues.map((val, index) => (
-                <Animated.View
-                  key={index}
-                  style={[
-                    styles.bar,
-                    {
-                      height: isRecording && !isPaused ? val : 5,
-                      backgroundColor: "#377BFA",
-                    },
-                  ]}
-                />
-              ))}
-            </View>
+          <RecordingWaveform active={isRecording && !isPaused} metering={metering} />
             <Text style={styles.timerText}>{formatTime(timer)}</Text>
 
           {!isRecording && !recordedUri ? (
-            <TouchableOpacity style={styles.startButton} onPress={toggleRecording}>
+            <TouchableOpacity disabled={isBusy} style={styles.startButton} onPress={toggleRecording}>
               <Ionicons name="mic" size={20} color="#FFFFFF" />
-              <Text style={styles.startButtonText}>Start Recording</Text>
+              <Text style={styles.startButtonText}>{isBusy ? "Starting..." : "Start Recording"}</Text>
             </TouchableOpacity>
           ) : null}
         {isRecording ? (
@@ -208,6 +170,7 @@ function VoiceRecordScreen() {
               accessibilityRole="button"
               accessibilityLabel={isPaused ? "Resume recording" : "Pause recording"}
               style={styles.pauseButton}
+              disabled={isBusy}
               onPress={isPaused ? resumeRecording : pauseRecording}
             >
               <Ionicons
@@ -217,7 +180,7 @@ function VoiceRecordScreen() {
               />
             </TouchableOpacity>
             <TouchableOpacity accessibilityRole="button" accessibilityLabel="Stop recording"
-              style={styles.stopButton} onPress={toggleRecording}>
+              disabled={isBusy} style={styles.stopButton} onPress={toggleRecording}>
               <View style={styles.stopSquare} />
             </TouchableOpacity>
           </View>
@@ -228,7 +191,7 @@ function VoiceRecordScreen() {
             <Ionicons name="pulse" size={33} color="#377BFA" />
           </View>
           <Text style={styles.transcriptionText}>
-            {isPaused ? "Recording paused. Tap resume to continue."
+            {recordingError ? recordingError : isPaused ? "Recording paused. Tap resume to continue."
               : isRecording ? statusMessage || "Recording patient and provider voices..."
               : recordedUri ? "Recording saved. Preview it or proceed to generate notes."
               : "Record patient and provider voices..."}
@@ -253,12 +216,12 @@ const styles = StyleSheet.create({
   headerTitle: { color: "#181B78", fontSize: 22, fontWeight: "700" },
   backgroundCircle: { position: "absolute", width: 120, height: 120, borderRadius: 60,
     left: -90, top: 220, backgroundColor: "#E8F4FF" },
-  hero: { alignSelf: "center", borderRadius: 999, backgroundColor: "#EAF4FF",
+  hero: { alignSelf: "center", borderRadius: 999, backgroundColor: "#F0F6FC",
     alignItems: "center", justifyContent: "center" },
   innerHalo: { position: "absolute", width: "78%", height: "78%",
-    borderRadius: 999, backgroundColor: "#CCE7FF" },
+    borderRadius: 999, backgroundColor: "#E8F1FA" },
   micCircle: { width: "61%", height: "61%", alignItems: "center", justifyContent: "center",
-    borderRadius: 999, overflow: "hidden" },
+    borderRadius: 999, overflow: "hidden", backgroundColor: COLORS.primary },
   listeningText: { color: "#181B78", fontSize: 22, fontWeight: "700",
     textAlign: "center", marginTop: 8 },
   transcriptionIcon: { width: 54, height: 54, borderRadius: 27,
@@ -272,78 +235,20 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     backgroundColor: "transparent",
   },
-  topBar: {
-    flexDirection: "row",
-    justifyContent: "flex-start",
-    padding: 16,
-    marginTop: 15,
-  },
-  backBtn: { borderRadius: 50, padding: 12 },
-  backIcon: { width: 18, height: 18, tintColor: "#fff" },
-  backIcon1: { width: 100, height: 100 },
   contentWrapper: {
     width: "100%",
     gap: 4,
   },
-  recordingCard: {
-    minHeight: 270,
-    borderRadius: 22,
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: COLORS.card,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  recordingBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: COLORS.secondary,
-  },
-  recordingDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    marginRight: 6,
-    backgroundColor: COLORS.primary,
-  },
-  recordingBadgeText: {
-    color: COLORS.primary,
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-  },
-  patientLabel: {
-    color: COLORS.textLight,
-    fontSize: 13,
-    fontWeight: "600",
-    marginTop: 2,
-  },
   transcriptionCard: {
     minHeight: 86,
-    borderRadius: 16,
+    borderRadius: 8,
     padding: 15,
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-    backgroundColor: "#EAF5FF",
+    backgroundColor: "#F0F6FC",
     borderWidth: 1,
-    borderColor: "#CBE5FF",
-  },
-  transcriptionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-  },
-  transcriptionTitle: {
-    color: COLORS.textLight,
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 0.6,
+    borderColor: COLORS.border,
   },
   transcriptionText: {
     flex: 1,
@@ -365,49 +270,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
   },
-  avatarImage: {
-    width: setHeight(20),
-    height: setHeight(20),
-    borderRadius: setHeight(10),
-    resizeMode: "contain",
-  },
-  avatarImage1: {
-    width: setHeight(30),
-    height: setHeight(10),
-    resizeMode: "contain",
-  },
-  avatarCircle: {
-    width: 150,
-    height: 150,
-    borderRadius: 40,
-    backgroundColor: "green",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarText: { color: "black", fontWeight: "bold", fontSize: 30 },
-  nameText: {
-    fontSize: setHeight(2.5),
-    fontWeight: "600",
-    marginTop: 12,
-    color: COLORS.primary,
-    alignSelf: "center",
-    textAlign: "center",
-  },
-  statusPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 20,
-    marginTop: 6,
-  },
-  statusText: { color: "#fff", fontSize: 12, fontWeight: "500" },
-  transcriptionWrapper: { marginVertical: setHeight(2), alignItems: "center" },
-  transcriptionLine3: {
-    fontSize: 16,
-    color: "black",
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  timerWrapper: { alignItems: "center" },
   timerText: {
     fontSize: 30,
     fontWeight: "700",
@@ -433,13 +295,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     backgroundColor: "#D8EDFF",
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: "#FFFFFF",
-  },
-  pauseText: {
-    color: COLORS.deep,
-    fontSize: 14,
-    fontWeight: "600",
   },
   stopButton: {
     width: 76,
@@ -457,88 +314,8 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: "#FFFFFF",
   },
-  stopText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "600",
-  },
   audioPreview: {
     marginTop: 12,
     marginBottom: 8,
-  },
-  micButton: {
-    width: setHeight(15),
-    height: setHeight(15),
-    borderRadius: setHeight(10),
-    padding: setHeight(1),
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#EEEEEE",
-    borderWidth: 1,
-    borderColor: "lightgrey",
-  },
-  bottomMicIcon: { width: 36, height: 36, tintColor: "#fff" },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.4)",
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 10,
-  },
-  modalContent: {
-    backgroundColor: "#fff",
-    paddingVertical: 24,
-    paddingHorizontal: 32,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  modalText: { fontSize: 16, color: "black", marginTop: 10 },
-  pausebutton: {
-    backgroundColor: "#EEEEEE",
-    borderRadius: setHeight(10),
-    width: setHeight(7),
-    height: setHeight(7),
-    alignItems: "center",
-    justifyContent: "center",
-    alignSelf: "center",
-    flexDirection: "row",
-    gap: setHeight(1),
-    borderWidth: 1,
-    borderColor: "lightgrey",
-  },
-  pausebar: {
-    backgroundColor: COLORS.primary,
-    width: setHeight(0.7),
-    height: setHeight(3),
-    alignItems: "center",
-    justifyContent: "center",
-    alignSelf: "center",
-  },
-  endbar: {
-    backgroundColor: COLORS.primary,
-    width: setHeight(2.5),
-    height: setHeight(2.5),
-    borderRadius: setHeight(0.3),
-    alignItems: "center",
-    justifyContent: "center",
-    alignSelf: "center",
-  },
-  procedBtn: {
-    marginTop: setHeight(1),
-    width: setWidth(90),
-    borderRadius: setHeight(1),
-  },
-  waveform: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    width: "100%",
-    height: 80,
-    marginTop: 0,
-  },
-  bar: {
-    width: 3,
-    marginHorizontal: 2.5,
-    borderRadius: 4,
   },
 });

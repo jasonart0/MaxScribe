@@ -3,9 +3,8 @@ import axios from "axios";
 import { baseURL } from "constants/base";
 
 const instance = axios.create({
-  baseURL: baseURL,
-  timeout: 10000,
-   
+  baseURL,
+  timeout: 30000,
 });
 
 // Attach token dynamically

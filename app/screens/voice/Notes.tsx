@@ -1,6 +1,7 @@
 import { CustomButton, ScreenWrapper } from "@components";
 import { Ionicons } from "@expo/vector-icons";
 import {
+    faildMessage,
     isNotEmpty,
     sectionConfig,
     sectionsToApiResponse,
@@ -9,6 +10,7 @@ import {
     successMessage,
 } from "@lib";
 import { savePatientScribeData } from "api/Encounter";
+import { apiErrorMessage } from "api/response";
 import DynamicEditor from "components/EditAble/DynamicEditable";
 import EditableNote from "components/EditAble/Richtext";
 import MicPulse from "components/mic";
@@ -16,9 +18,10 @@ import CollapsibleSection from "components/Section";
 import { COLORS } from "constants/Colors";
 import useVoice from "hooks/useVoice";
 import { getUserData } from "lib/authdata";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import type { ClinicalNote, ScreenProps } from "types/navigation";
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-export default function Notes({ route, navigation }) {
+export default function Notes({ route, navigation }: ScreenProps<"Notes">) {
   const { patient, transcription, jsonData, editAble, aData } =
     route.params?.data || {};
 
@@ -26,8 +29,10 @@ export default function Notes({ route, navigation }) {
   const [editData, setEditData] = useState<any>(null);
   const editable = editAble === undefined ? true : editAble;
   const [openEditModal, setOpenEditModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
 
-  const updateSectionData = (title, newData) => {
+  const updateSectionData = (title: string, newData: any) => {
     setSections((prevSections) =>
       prevSections.map((section) => {
         if (section.title === title) {
@@ -71,13 +76,18 @@ export default function Notes({ route, navigation }) {
     );
   };
 
-  const [islistning, setIsListening] = useState(false);
-  const { _startRecognizing, results, finalResult, clearResults } = useVoice();
+  const { started: isListening, processing, error: dictationError, _startRecognizing, results, finalResult, clearResults, _destroyRecognizer } = useVoice();
+  useEffect(() => {
+    if (dictationError) faildMessage(dictationError);
+  }, [dictationError]);
 
   const handleNewData = (newData: any) => {
-    setEditData((prev: any) => ({ ...prev, data: newData }));
+    setEditData((prev: any) => ({ ...prev, data: typeof prev?.data === "string" && Array.isArray(newData) ? newData[0] ?? "" : newData }));
   };
-  const handleUpdateAndSaveEncounter = async (jsondata) => {
+  const handleUpdateAndSaveEncounter = async (jsondata: ClinicalNote) => {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
     try {
       const text = JSON.stringify(jsondata);
       const user = await getUserData();
@@ -87,6 +97,7 @@ export default function Notes({ route, navigation }) {
         isNotEmpty(user) &&
         isNotEmpty(patient)
       ) {
+        if (!user?.username) throw new Error("Your session has expired. Please sign in again.");
         const scribeData = {
           id: aData?.id,
           notes_data: text,
@@ -101,16 +112,16 @@ export default function Notes({ route, navigation }) {
           pos_id: aData?.pos_id,
           date_created: aData?.date_created,
         };
-        console.log("Scribe data to save:", scribeData);
-
-        const scribeResponse = await savePatientScribeData(scribeData);
-        console.log("Scribe save response:", scribeResponse);
-      }
+        await savePatientScribeData(scribeData);
+      } else throw new Error("The encounter could not be updated. Please reopen the patient encounter.");
 
       successMessage("✅ Synced", "Encounter note synced to EHR system.");
       navigation.goBack();
     } catch (err) {
-      console.error("Error saving encounter:", err);
+      faildMessage(apiErrorMessage(err, "Unable to update the encounter. Please try again."));
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
   };
   return (
@@ -124,7 +135,6 @@ export default function Notes({ route, navigation }) {
               <CustomButton
                 title={"Send to Maximus"}
                 onPress={() => {
-                  // navigation.navigate("AddEncounter", { patient, jsonData });
                   const updatedApiResponse = sectionsToApiResponse(
                     sections,
                     jsonData
@@ -142,13 +152,13 @@ export default function Notes({ route, navigation }) {
               <View style={{ alignItems: "center" }}>
                 <CustomButton
                   title={"Update on Maximus"}
+                  isLoading={saving}
                   onPress={() => {
                     const updatedApiResponse = sectionsToApiResponse(
                       sections,
                       jsonData
                     );
                     handleUpdateAndSaveEncounter(updatedApiResponse);
-                    // navigation.navigate("AddEncounter", {
                     //   patient,
                     //   jsonData: updatedApiResponse,
                     // });
@@ -180,7 +190,11 @@ export default function Notes({ route, navigation }) {
           )}
         </View>
       </ScreenWrapper>
-      <Modal visible={openEditModal} animationType="slide">
+      <Modal visible={openEditModal} animationType="slide" onRequestClose={() => {
+        if (processing) return;
+        void _destroyRecognizer();
+        setOpenEditModal(false);
+      }}>
         <ScreenWrapper
           title="Edit Note"
           scrollEnabled
@@ -207,10 +221,8 @@ export default function Notes({ route, navigation }) {
                 </Text>
                 <TouchableOpacity
                   onPress={async () => {
-                    if (islistning) {
-                      clearResults();
-                      setIsListening(false);
-                    }
+                    if (processing) return;
+                    await _destroyRecognizer();
                     setOpenEditModal(false);
                   }}
                 >
@@ -224,41 +236,14 @@ export default function Notes({ route, navigation }) {
           footerUnScrollable={() => {
             return (
               <>
-                {/* {islistning && (
-                  <View style={styles.topBar}>
-                    <TouchableOpacity
-                      onPress={() => _clearResults()}
-                      style={styles.backBtn}
-                    >
-                      <Ionicons
-                        name="checkbox-outline"
-                        size={20}
-                        color="#000000ff"
-                        style={styles.backIcon}
-                      />
-                    </TouchableOpacity>
-                    <Text
-                      style={{
-                        color: "#000000ff",
-                        fontSize: 18,
-                        fontWeight: "600",
-                        marginLeft: 16,
-                      }}
-                    >
-                      {results.join(" ")}
-                    </Text>
-                  </View>
-                )} */}
+
                 <CustomButton
                   title="Save"
+                  disabled={isListening || processing}
                   onPress={() => {
-                    // updateSection(title, editData);
                     setOpenEditModal(false);
                     updateSectionData(editData?.title, editData?.data);
-                    if (islistning) {
-                      clearResults();
-                      setIsListening(false);
-                    }
+                    void _destroyRecognizer();
                   }}
                   style={{ margin: 16, borderRadius: setHeight(1) }}
                 />
@@ -289,7 +274,7 @@ export default function Notes({ route, navigation }) {
                 }
                 setData={handleNewData}
                 title={editData?.title}
-                // excludedKeys={editData?.notShow || []}
+                excludedKeys={editData?.notShow || []}
                 multilineKeys={["description"]}
               />
             )}
@@ -297,6 +282,7 @@ export default function Notes({ route, navigation }) {
         </ScreenWrapper>
         {/<\/?[a-z][\s\S]*>/i.test(editData?.data) && (
           <TouchableOpacity
+            disabled={processing}
             style={{
               position: "absolute",
               bottom: setHeight(10),
@@ -304,17 +290,17 @@ export default function Notes({ route, navigation }) {
             }}
             onPress={async () => {
               try {
-                if (!islistning) {
+                if (!isListening) {
                   await _startRecognizing();
-                  setIsListening(!islistning);
                 } else {
                   await clearResults();
-                  setIsListening(false);
                 }
-              } catch (error) {}
+              } catch (error) {
+                faildMessage(apiErrorMessage(error, "Dictation failed. Please try again."));
+              }
             }}
           >
-            {islistning ? (
+            {processing ? <Text style={{ color: COLORS.primary }}>Transcribing...</Text> : isListening ? (
               <MicPulse
                 size={setHeight(4)}
                 rippleCount={5}
@@ -326,7 +312,7 @@ export default function Notes({ route, navigation }) {
               <View
                 style={{
                   borderRadius: setHeight(5),
-                  backgroundColor: !islistning ? COLORS.primary : "#ffffffff",
+                  backgroundColor: !isListening ? COLORS.primary : "#ffffffff",
                   justifyContent: "center",
                   alignItems: "center",
                 }}
@@ -348,45 +334,8 @@ export default function Notes({ route, navigation }) {
 
 /* ---------- styles ---------- */
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.background },
-  topBar: {
-    flexDirection: "row",
-    justifyContent: "flex-start",
-    alignItems: "center",
-    paddingHorizontal: setHeight(2),
-    paddingVertical: setHeight(1),
-  },
-  backBtn: { borderRadius: 50, padding: 12 },
-  backIcon: { width: 18, height: 18, tintColor: "#FFF" },
-  scroll: {
-    paddingHorizontal: setHeight(2),
-    paddingBottom: setHeight(2),
-    alignContent: "center",
-    justifyContent: "center",
-    alignItems: "center",
-  },
   cardList: {
     alignItems: "center",
-  },
-  emptyCard: { padding: 16 },
-  emptyText: { color: COLORS.textLight, fontSize: 14 },
-  button: {
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    borderRadius: 20,
-    paddingHorizontal: 15,
-    paddingVertical: 6,
-    marginHorizontal: 5,
-  },
-  text: {
-    color: COLORS.primary,
-    fontWeight: "500",
-  },
-  activeButton: {
-    backgroundColor: COLORS.primary,
-  },
-  activeText: {
-    color: "#fff",
   },
   procedBtn: {
     width: setWidth(90),

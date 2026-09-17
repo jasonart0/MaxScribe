@@ -4,10 +4,10 @@ import { ScrollView, StyleSheet, TextInput, View } from "react-native";
 export default function FamilyHistoryEditor({
   familyHistory,
   setFamilyHistory,
-}) {
+}: { familyHistory: Record<string, string>[]; setFamilyHistory: (value: Record<string, string>[]) => void }) {
   const handleChange = (index: number, key: string, value: string) => {
     const updated = [...familyHistory];
-    updated[index][key] = value;
+    updated[index] = { ...updated[index], [key]: value };
     setFamilyHistory(updated);
   };
 
@@ -60,7 +60,6 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 16,
   },
-  heading: { fontWeight: "bold", marginBottom: 8, fontSize: 16 },
   input: {
     borderWidth: 1,
     borderColor: "#ddd",

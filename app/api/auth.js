@@ -2,71 +2,41 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import dayjs from "dayjs";
 import { saveUserData } from "lib/authdata";
 import axios from "./axiosInstance";
+import { apiErrorMessage, assertApiSuccess, unwrapData } from "./response";
+
+export const getUserPracticeID = async (token) => {
+  const formData = new FormData();
+  formData.append("token", token);
+  const response = await axios.post("/auth/token/parse", formData, { headers: { "Content-Type": "multipart/form-data" } });
+  assertApiSuccess(response.data);
+  const data = unwrapData(response.data);
+  if (data?.practice_id == null || String(data.practice_id).trim() === "") {
+    throw new Error("No practice is assigned to this account. Please contact your administrator.");
+  }
+  return data;
+};
 
 export const loginUser = async (username, password) => {
+  let tokenStored = false;
   try {
-    console.info("[Auth] Sending login request");
     const response = await axios.post("/auth/token", {
       app: "EHR",
       client_time_stamp: dayjs().format("YYYY-MM-DD HH:mm:ss.SSS"),
       username,
       password,
     });
-    const token = response.data?.data?.access_token;
-    const id = response.data?.data?.id;
-    if (!token || typeof token !== "string") {
-      console.error("❌ Missing token in response:", response.data);
-      return {
-        success: false,
-        message: "Login failed: no valid token received.",
-      };
+    assertApiSuccess(response.data);
+    const data = unwrapData(response.data);
+    if (typeof data?.access_token !== "string" || !data.access_token.trim()) {
+      throw new Error("Login failed: no valid token received.");
     }
-
-    await AsyncStorage.setItem("token", token);
-    let data = await getUserPracticeID(token);
-    console.log("id from token", data?.practice_id);
-    const practice_id = data?.practice_id;
-    await saveUserData(username, id, password, practice_id);
-    return { success: true, token }; // return token for immediate use
+    await AsyncStorage.setItem("token", data.access_token);
+    tokenStored = true;
+    const practice = await getUserPracticeID(data.access_token);
+    await saveUserData(username, practice.user_id ?? data.id, undefined, practice.practice_id);
+    return { success: true, token: data.access_token };
   } catch (error) {
-    // console.error("❌ Login error:", error?.response?.data || error.message);
-    const responseData = error?.response?.data;
-    const message =
-      responseData?.response ||
-      responseData?.message ||
-      error?.message ||
-      "Login failed. Check credentials.";
-
-    console.error("[Auth] Login request failed", {
-      status: error?.response?.status,
-      message,
-    });
-
-    return {
-      success: false,
-      status: error?.response?.status,
-      message,
-    };
-  }
-};
-
-export const getUserPracticeID = async (token) => {
-  try {
-    const formdata = new FormData();
-    formdata.append("token", token);
-    const response = await axios.post("/auth/token/parse", formdata);
-
-    const practiceID = response.data;
-    return practiceID;
-  } catch (error) {
-    console.log(error);
-
-    // console.error("❌ Login error:", error?.response?.data || error.message);
-    return {
-      success: false,
-      message:
-        error?.response?.data?.message ||
-        "get Practice id  failed. Check credentials.",
-    };
+    if (tokenStored) await AsyncStorage.multiRemove(["token", "userdata"]).catch(() => {});
+    return { success: false, status: error?.response?.status, message: apiErrorMessage(error, "Login failed. Check your credentials and connection.") };
   }
 };

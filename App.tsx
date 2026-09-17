@@ -15,14 +15,15 @@ import VoiceRecordScreen from "./app/screens/voice/ViceRecorder";
 
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import type { RootStackParamList } from "./app/types/navigation";
 
-const Stack = createNativeStackNavigator();
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   const [showSplashScreens, setShowSplashScreens] = useState(true);
 
   if (showSplashScreens) {
-    return <SplashScreens onComplete={() => setShowSplashScreens(false)} />;
+    return <SafeAreaProvider><SplashScreens onComplete={() => setShowSplashScreens(false)} /></SafeAreaProvider>;
   }
 
   return (

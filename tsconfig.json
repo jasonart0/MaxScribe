@@ -3,19 +3,16 @@
 	"compilerOptions": {
 		"jsx": "react",
 		"strict": true,
-		"baseUrl": "app",
 		"paths": {
-			"@navigation": ["navigation"],
-			"@screens": ["screens"],
-			"@components": ["components"],
-			"@constants": ["constants"],
-			"@lib": ["lib"],
-			"@model": ["model"],
-			"@store": ["store"],
-			"@assets": ["assets"],
-			"@config": ["config"],
-			"@context": ["context"],
-			"@hooks": ["hooks"],
+			"*": ["./app/*"],
+			"@screens": ["./app/screens"],
+			"@components": ["./app/components"],
+			"@constants": ["./app/constants"],
+			"@lib": ["./app/lib"],
+			"@assets": ["./app/assets"],
+			"@hooks": ["./app/hooks"]
 		}
-	}
+	},
+	"include": ["App.tsx", "app/**/*.ts", "app/**/*.tsx", "app/**/*.js"],
+	"exclude": ["node_modules", ".expo", "dist", "android", "ios"]
 }

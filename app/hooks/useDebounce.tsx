@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 // value = the state you want to debounce
 // delay = time in ms before returning the value
-export function useDebounce(value, delay = 500) {
+export function useDebounce<T,>(value: T, delay = 500) {
   const [debouncedValue, setDebouncedValue] = useState(value);
 
   useEffect(() => {

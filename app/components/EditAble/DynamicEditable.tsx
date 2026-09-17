@@ -48,20 +48,18 @@ export default function DynamicEditor<T extends string | Record<string, any>>({
 
           {typeof item === "string" ? (
             <TextInput
-              editable={false}
               style={styles.input}
               value={item}
               onChangeText={(text) => handleChange(index, null, text)}
               placeholder={`${title || "Item"} ${index + 1}`}
             />
           ) : (
-            Object.entries(item)
+            Object.entries(item || {})
               .filter(([key]) => !excludedKeys.includes(key))
               .map(([key, value]) => (
                 <View key={key} style={styles.field}>
                   <Text style={styles.label}>{formatLabel(key)}</Text>
                   <TextInput
-                    editable={false}
                     style={[
                       styles.input,
                       multilineKeys.includes(key)
@@ -91,7 +89,6 @@ const styles = StyleSheet.create({
     padding: 12,
     marginVertical: 8,
     borderRadius: 10,
-    elevation: 2,
   },
   heading: {
     fontSize: 16,

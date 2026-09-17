@@ -17,7 +17,7 @@ export default function CollapsibleSection({
   data,
   icon,
   editable,
-  notShow,
+  notShow = [],
   onPressEdit,
 }: any) {
   const [open, setOpen] = useState(true);
@@ -25,7 +25,7 @@ export default function CollapsibleSection({
 
   if (!data || (Array.isArray(data) && data.length === 0)) return null;
 
-  const renderContent = (item, idx) => {
+  const renderContent = (item: unknown, idx: number) => {
     if (!item) return null;
     // if(title==="Allergies"){
     // return <EditableForm sections={data} />;
@@ -57,7 +57,7 @@ export default function CollapsibleSection({
             if (!isNotEmpty(v)) return;
             return (
               <Text key={k} style={styles.objectText}>
-                {v}
+                {typeof v === "object" ? JSON.stringify(v) : String(v)}
               </Text>
             );
           })}
@@ -100,7 +100,7 @@ export default function CollapsibleSection({
             style={styles.button}
           >
             <Text style={styles.text}>Edit</Text>
-            {/* <Ionicons name="pencil" size={16} color={COLORS.primary} /> */}
+
           </TouchableOpacity>
         )}
         <Ionicons
@@ -152,7 +152,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   objectText: { fontSize: 14, color: COLORS.text, marginBottom: 2 },
-  objectKey: { fontWeight: "600", color: COLORS.text },
   button: {
     backgroundColor: COLORS.secondary,
     borderRadius: 5,
@@ -165,7 +164,7 @@ const styles = StyleSheet.create({
   },
 });
 
-const markdownStyles = {
+const markdownStyles = StyleSheet.create({
   body: {
     color: COLORS.text,
     fontSize: 14,
@@ -174,4 +173,4 @@ const markdownStyles = {
   strong: {
     fontWeight: "bold",
   },
-};
+});

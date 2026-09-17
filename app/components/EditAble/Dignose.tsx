@@ -1,10 +1,10 @@
 import React from "react";
 import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
-export default function DiagnosisEditor({ diagnoses, setDiagnoses }) {
+export default function DiagnosisEditor({ diagnoses, setDiagnoses }: { diagnoses: Record<string, string>[]; setDiagnoses: (value: Record<string, string>[]) => void }) {
   const handleChange = (index: number, key: string, value: string) => {
     const updated = [...diagnoses];
-    updated[index][key] = value;
+    updated[index] = { ...updated[index], [key]: value };
     setDiagnoses(updated);
   };
 
