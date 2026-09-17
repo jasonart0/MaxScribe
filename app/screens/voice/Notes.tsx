@@ -26,16 +26,8 @@ export default function Notes({ route, navigation }: ScreenProps<"Notes">) {
     route.params?.data || {};
 
   const [sections, setSections] = useState(() => jsonData ? sectionConfig(jsonData) || [] : []);
-  const autoOpenGeneratedNote = Boolean(transcription && !aData && sections.length);
-  const firstSection = autoOpenGeneratedNote ? sections.find((section) => section.hasData) ?? sections[0] : null;
-  const defaultEditData = firstSection ? {
-    title: firstSection.title,
-    data: firstSection.data,
-    icon: firstSection.icon,
-    hasData: firstSection.hasData,
-    notShow: firstSection.notShow,
-  } : null;
-  const [editData, setEditData] = useState<any>(defaultEditData);
+  const isGeneratedNoteFlow = Boolean(transcription && !aData && sections.length);
+  const [editData, setEditData] = useState<any>(null);
   const editable = true;
   const [openEditModal, setOpenEditModal] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -93,6 +85,59 @@ export default function Notes({ route, navigation }: ScreenProps<"Notes">) {
   const handleNewData = (newData: any) => {
     setEditData((prev: any) => ({ ...prev, data: typeof prev?.data === "string" && Array.isArray(newData) ? newData[0] ?? "" : newData }));
   };
+
+  const openSectionEditor = (section: any) => {
+    setOpenEditModal(true);
+    setEditData({
+      title: section.title,
+      data: section.data,
+      icon: section.icon,
+      hasData: section.hasData,
+      notShow: section.notShow,
+    });
+  };
+
+  const renderGeneratedSection = (section: any) => {
+    const rawData = section?.data;
+    const displayText = (() => {
+      if (typeof rawData === "string") return rawData.replace(/<\/?[a-z][\s\S]*>/gi, "").trim();
+      if (Array.isArray(rawData)) {
+        return rawData
+          .map((item) => {
+            if (typeof item === "string") return item.replace(/<\/?[a-z][\s\S]*>/gi, "").trim();
+            if (item && typeof item === "object") {
+              return Object.entries(item)
+                .filter(([key, value]) => !section.notShow?.includes(key) && isNotEmpty(value))
+                .map(([, value]) => (typeof value === "object" ? JSON.stringify(value) : String(value)))
+                .join("\n");
+            }
+            return "";
+          })
+          .filter(Boolean)
+          .join("\n\n");
+      }
+      if (rawData && typeof rawData === "object") {
+        return Object.entries(rawData)
+          .filter(([key, value]) => !section.notShow?.includes(key) && isNotEmpty(value))
+          .map(([, value]) => (typeof value === "object" ? JSON.stringify(value) : String(value)))
+          .join("\n");
+      }
+      return "";
+    })();
+
+    return (
+      <TouchableOpacity
+        key={section.key}
+        activeOpacity={0.85}
+        style={styles.generatedSection}
+        onPress={() => openSectionEditor(section)}
+      >
+        <Text style={styles.generatedTitle}>{section.title}</Text>
+        <Text style={styles.generatedBody}>{displayText || "No content"}</Text>
+      </TouchableOpacity>
+    );
+  };
+
   const handleUpdateAndSaveEncounter = async (jsondata: ClinicalNote) => {
     if (savingRef.current) return;
     savingRef.current = true;
@@ -180,24 +225,25 @@ export default function Notes({ route, navigation }: ScreenProps<"Notes">) {
         }}
       >
         <View style={styles.cardList}>
-          {sections.map(
-            ({ key, title, data, icon, hasData, notShow }, index) =>
-              hasData && (
-                <CollapsibleSection
-                  key={key}
-                  title={title}
-                  data={data}
-                  icon={icon}
-                  editable={editable}
-                  notShow={notShow}
-                  defaultOpen={index === 0}
-                  onPressEdit={() => {
-                    setOpenEditModal(true);
-                    setEditData({ title, data, icon, hasData, notShow });
-                  }}
-                />
-              )
-          )}
+          {isGeneratedNoteFlow
+            ? sections.map((section) => section.hasData && renderGeneratedSection(section))
+            : sections.map(
+                ({ key, title, data, icon, hasData, notShow }, index) =>
+                  hasData && (
+                    <CollapsibleSection
+                      key={key}
+                      title={title}
+                      data={data}
+                      icon={icon}
+                      editable={editable}
+                      notShow={notShow}
+                      defaultOpen={index === 0}
+                      onPressEdit={() => {
+                        openSectionEditor({ key, title, data, icon, hasData, notShow });
+                      }}
+                    />
+                  )
+              )}
         </View>
       </ScreenWrapper>
       <Modal visible={openEditModal} animationType="slide" onRequestClose={() => {
@@ -354,5 +400,26 @@ const styles = StyleSheet.create({
     width: "100%",
     borderRadius: 12,
     marginBottom: setHeight(2),
+  },
+  generatedSection: {
+    width: "100%",
+    borderRadius: 16,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "rgba(29,115,188,0.12)",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 12,
+  },
+  generatedTitle: {
+    color: COLORS.primary,
+    fontSize: 15,
+    fontWeight: "700",
+    marginBottom: 8,
+  },
+  generatedBody: {
+    color: COLORS.text,
+    fontSize: 14,
+    lineHeight: 22,
   },
 });
