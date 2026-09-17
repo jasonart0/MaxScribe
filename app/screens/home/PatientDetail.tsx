@@ -70,6 +70,18 @@ function extractEncounters(response: any): Visit[] {
   return candidates.find(Array.isArray) || [];
 }
 
+function formatVisitDate(value?: string) {
+  if (!value) return { day: "--", month: "" };
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return { day: "--", month: "" };
+  }
+  return {
+    day: String(date.getDate()).padStart(2, "0"),
+    month: date.toLocaleString("en-US", { month: "short" }).toUpperCase(),
+  };
+}
+
 export default function PatientDetailsScreen({ route, navigation }: any) {
   const patient = route?.params?.patient || route?.params || {};
   const [visits, setVisits] = useState<Visit[]>([]);
@@ -110,12 +122,6 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
   const age = patient.age ?? calculateAge(patient.dob);
   const genderCode = patient.gender_code?.toUpperCase();
   const gender = patient.gender || patient.sex || (genderCode === "M" ? "Male" : genderCode === "F" ? "Female" : "Patient");
-  const contactDetails = [
-    { label: "Date of birth", value: patient.dob, icon: "calendar-outline" },
-    { label: "Mobile phone", value: patient.cell_phone, icon: "call-outline" },
-    { label: "Home phone", value: patient.home_phone, icon: "home-outline" },
-    { label: "Patient ID", value: patient.alternate_account ?? patient.patient_id, icon: "person-outline" },
-  ] as const;
   const openVisit = (item: Visit) => {
     if (!isValidJSON(item.notes_data)) return;
     navigation.navigate("Notes", {
@@ -131,14 +137,17 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
   };
 
   const renderVisit = ({ item }: { item: Visit }) => {
+    const { day, month } = formatVisitDate(item.date_created);
+
     return (
       <Pressable
         disabled={!isValidJSON(item.notes_data)}
         onPress={() => openVisit(item)}
         style={({ pressed }) => [styles.visitCard, pressed && styles.pressed]}
       >
-        <View style={styles.documentIcon}>
-          <Ionicons name="document-text-outline" size={22} color={COLORS.primary} />
+        <View style={styles.dateBadge}>
+          <Text style={styles.dateDay}>{day}</Text>
+          {!!month && <Text style={styles.dateMonth}>{month}</Text>}
         </View>
         <View style={styles.visitCopy}>
           <Text style={styles.visitTitle}>
@@ -207,21 +216,6 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
                     </Text>
                   </View>
                 </View>
-              </View>
-              <View style={styles.contactCard}>
-                {contactDetails.map(({ label, value, icon }) => (
-                  <View key={label} style={styles.infoRow}>
-                    <View style={styles.infoIcon}>
-                      <Ionicons name={icon} size={20} color={COLORS.primary} />
-                    </View>
-                    <View style={styles.infoCopy}>
-                      <Text style={styles.infoLabel}>{label}</Text>
-                      <Text selectable style={styles.infoText}>
-                        {value == null || value === "" ? "--" : String(value)}
-                      </Text>
-                    </View>
-                  </View>
-                ))}
               </View>
               <Text style={styles.historyTitle}>Visit history</Text>
             </>
@@ -335,14 +329,17 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     elevation: 0,
   },
-  documentIcon: {
-    width: 40,
-    height: 40,
+  dateBadge: {
+    width: 44,
+    minHeight: 44,
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: COLORS.mutedSurface,
+    paddingVertical: 6,
   },
+  dateDay: { color: COLORS.primary, fontSize: 15, lineHeight: 18, fontWeight: "700" },
+  dateMonth: { color: COLORS.primary, fontSize: 9, lineHeight: 11, fontWeight: "600", letterSpacing: 0.5 },
   visitCopy: { flex: 1, minWidth: 0, marginLeft: 12, marginRight: 8 },
   visitTitle: { color: COLORS.deep, fontSize: 14, lineHeight: 20, fontWeight: "500" },
   visitDate: { marginTop: 4, color: COLORS.textLight, fontSize: 12, lineHeight: 18, fontWeight: "400" },

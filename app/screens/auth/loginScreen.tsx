@@ -3,9 +3,9 @@ import { faildMessage, isNotEmpty, successMessage } from "@lib";
 import { loginUser } from "api/auth";
 import AppBackground from "components/AppBackground";
 import { COLORS } from "constants/Colors";
-import React, { useEffect, useRef, useState } from "react";
 import { getUserData } from "lib/authdata";
 import { clearSavedLogin, getSavedLogin, saveLoginCredentials, supportsSavedPassword } from "lib/savedLogin";
+import React, { useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -193,15 +193,31 @@ export default function LoginScreen({ navigation }: any) {
                   </Pressable>
                 </View>
 
-                {supportsSavedPassword ? (
-                  <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: savePassword, disabled: isLoading }}
-                    disabled={isLoading} onPress={toggleSavePassword} style={styles.savePasswordRow}>
-                    <Ionicons name={savePassword ? "checkbox" : "square-outline"} size={22} color={PRIMARY} />
-                    <Text style={styles.savePasswordText}>Save password</Text>
+                <View style={styles.optionsRow}>
+                  {supportsSavedPassword ? (
+                    <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: savePassword, disabled: isLoading }}
+                      disabled={isLoading} onPress={toggleSavePassword} style={styles.savePasswordRow}>
+                      <Ionicons name={savePassword ? "checkbox" : "square-outline"} size={22} color={PRIMARY} />
+                      <Text style={styles.savePasswordText}>Save password</Text>
+                    </Pressable>
+                  ) : (
+                    <Text style={styles.passwordManagerHint}>Save using browser manager</Text>
+                  )}
+
+                  <Pressable
+                    accessibilityRole="button"
+                    hitSlop={10}
+                    onPress={() =>
+                      Alert.alert(
+                        "Forgot Password?",
+                        "Please contact your practice administrator to reset your password.",
+                      )
+                    }
+                    style={({ pressed }) => [styles.forgotButton, pressed && styles.pressed]}
+                  >
+                    <Text style={styles.forgotText}>Forgot Password?</Text>
                   </Pressable>
-                ) : (
-                  <Text style={styles.passwordManagerHint}>Save your password using your browser&apos;s password manager.</Text>
-                )}
+                </View>
 
                 <Pressable
                   accessibilityRole="button"
@@ -218,20 +234,6 @@ export default function LoginScreen({ navigation }: any) {
                   ) : (
                     <Text style={styles.signInText}>Sign In</Text>
                   )}
-                </Pressable>
-
-                <Pressable
-                  accessibilityRole="button"
-                  hitSlop={10}
-                  onPress={() =>
-                    Alert.alert(
-                      "Forgot Password?",
-                      "Please contact your practice administrator to reset your password.",
-                    )
-                  }
-                  style={({ pressed }) => [styles.forgotButton, pressed && styles.pressed]}
-                >
-                  <Text style={styles.forgotText}>Forgot Password?</Text>
                 </Pressable>
               </View>
             </View>
@@ -328,13 +330,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: PRIMARY,
   },
-  savePasswordRow: { flexDirection: "row", alignItems: "center", gap: 8, minHeight: 44, marginTop: 4 },
+  optionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    minHeight: 44,
+    marginTop: 4,
+  },
+  savePasswordRow: { flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1 },
   savePasswordText: { color: INK, fontSize: 14 },
-  passwordManagerHint: { color: COLORS.textLight, fontSize: 12, marginTop: 10 },
+  passwordManagerHint: { color: COLORS.textLight, fontSize: 12, flexShrink: 1 },
   signInPressed: { opacity: 0.86, transform: [{ scale: 0.995 }] },
   signInButtonCompact: { height: 48, marginTop: 14 },
   signInText: { color: "#FFFFFF", fontSize: 16, fontWeight: "700" },
-  forgotButton: { minHeight: 48, alignItems: "center", justifyContent: "center" },
+  forgotButton: { minHeight: 44, alignItems: "center", justifyContent: "center", paddingHorizontal: 4 },
   forgotText: { color: "#0676D1", fontSize: 14, fontWeight: "700" },
   pressed: { opacity: 0.65 },
   illustrationArea: {
