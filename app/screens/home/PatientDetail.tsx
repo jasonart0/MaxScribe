@@ -138,6 +138,7 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
 
   const renderVisit = ({ item }: { item: Visit }) => {
     const { day, month } = formatVisitDate(item.date_created);
+    const title = item.provider_name || item.encounter_type || item.visit_type || item.appointment_type || "Provider unavailable";
 
     return (
       <Pressable
@@ -150,21 +151,12 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
           {!!month && <Text style={styles.dateMonth}>{month}</Text>}
         </View>
         <View style={styles.visitCopy}>
-          <Text style={styles.visitTitle}>
-            {item.encounter_type || item.visit_type || item.appointment_type || "Patient encounter"}
+          <Text numberOfLines={1} style={styles.visitTitle}>
+            {title}
           </Text>
-          {!!item.date_created && <Text style={styles.visitDate}>{item.date_created}</Text>}
-          {!!item.location_name && <Text numberOfLines={1} style={styles.visitLocation}>
-            {item.location_name}
-          </Text>}
           {!!item.location_name && (
-            <Text numberOfLines={1} style={styles.providerName}>
-              {item.provider_name || "Provider unavailable"}
-            </Text>
-          )}
-          {!item.location_name && !!item.provider_name && (
-            <Text numberOfLines={1} style={styles.providerName}>
-              {item.provider_name}
+            <Text numberOfLines={1} style={styles.visitLocation}>
+              {item.location_name}
             </Text>
           )}
         </View>
@@ -341,10 +333,8 @@ const styles = StyleSheet.create({
   dateDay: { color: COLORS.primary, fontSize: 15, lineHeight: 18, fontWeight: "700" },
   dateMonth: { color: COLORS.primary, fontSize: 9, lineHeight: 11, fontWeight: "600", letterSpacing: 0.5 },
   visitCopy: { flex: 1, minWidth: 0, marginLeft: 12, marginRight: 8 },
-  visitTitle: { color: COLORS.deep, fontSize: 14, lineHeight: 20, fontWeight: "500" },
-  visitDate: { marginTop: 4, color: COLORS.textLight, fontSize: 12, lineHeight: 18, fontWeight: "400" },
-  visitLocation: { marginTop: 4, color: COLORS.text, fontSize: 13, lineHeight: 19, fontWeight: "400" },
-  providerName: { marginTop: 3, color: COLORS.textLight, fontSize: 13, lineHeight: 19, fontWeight: "400" },
+  visitTitle: { color: COLORS.deep, fontSize: 14, lineHeight: 20, fontWeight: "600" },
+  visitLocation: { marginTop: 4, color: COLORS.textLight, fontSize: 12, lineHeight: 18, fontWeight: "400" },
   loader: { marginTop: 28 },
   emptyState: { alignItems: "center", paddingVertical: 36 },
   emptyText: { marginTop: 10, color: "#607BC2", fontSize: 14 },

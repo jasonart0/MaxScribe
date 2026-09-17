@@ -35,14 +35,16 @@ export default function PatientCard({ patient, onViewPress, onCallPress }: Patie
         onPress={onViewPress} style={({ pressed }) => pressed && styles.pressed}>
       <View style={styles.topRow}>
         {imageUri ? (
-          <AvatarInitials imageUri={imageUri} name={patient.name} size={66} />
+          <AvatarInitials imageUri={imageUri} name={patient.name} size={60} />
         ) : (
-          <View style={styles.avatar}><Ionicons name="person" size={35} color="#4C9BF5" /></View>
+          <View style={styles.avatar}><Ionicons name="person" size={30} color="#4C9BF5" /></View>
         )}
         <View style={styles.copy}>
-          <Text numberOfLines={1} style={styles.name}>{patient.name || "Unknown Patient"}</Text>
-          <View style={styles.statusPill}>
-            <Text style={styles.status}>{patient.patient_status || "Patient"}</Text>
+          <View style={styles.nameRow}>
+            <Text numberOfLines={1} style={styles.name}>{patient.name || "Unknown Patient"}</Text>
+            <View style={styles.statusPill}>
+              <Text style={styles.status}>{patient.patient_status || "Patient"}</Text>
+            </View>
           </View>
           <Text style={styles.dob}>DOB: {patient.dob || "--"}</Text>
         </View>
@@ -75,13 +77,14 @@ const styles = StyleSheet.create({
   card: { paddingHorizontal: 12, paddingTop: 10, borderRadius: 8, backgroundColor: COLORS.card,
     borderWidth: 1, borderColor: COLORS.border },
   topRow: { flexDirection: "row", alignItems: "center" },
-  avatar: { width: 56, height: 56, borderRadius: 28, alignItems: "center",
+  avatar: { width: 54, height: 54, borderRadius: 27, alignItems: "center",
     justifyContent: "center", backgroundColor: "#E7F3FF" },
   copy: { flex: 1, minWidth: 0, marginLeft: 12, marginRight: 52 },
-  name: { color: COLORS.deep, fontSize: 15, fontWeight: "700" },
-  statusPill: { alignSelf: "flex-start", borderRadius: 12, paddingHorizontal: 10,
-    paddingVertical: 2, marginTop: 4, backgroundColor: "#DFF5F1" },
-  status: { color: "#189C9A", fontSize: 11, textTransform: "uppercase" },
+  nameRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap" },
+  name: { color: COLORS.deep, fontSize: 15, fontWeight: "700", flexShrink: 1 },
+  statusPill: { marginLeft: 8, alignSelf: "flex-start", borderRadius: 12, paddingHorizontal: 8,
+    paddingVertical: 2, backgroundColor: "#DFF5F1" },
+  status: { color: "#189C9A", fontSize: 10, textTransform: "uppercase" },
   dob: { marginTop: 4, color: "#7285A8", fontSize: 12 },
   micButton: { position: "absolute", right: 12, top: 17, width: 44, height: 44, borderRadius: 22, alignItems: "center",
     justifyContent: "center", backgroundColor: "#E7F3FF" },
