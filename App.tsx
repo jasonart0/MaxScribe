@@ -3,6 +3,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import React, { useState } from "react";
+import { Dimensions } from "react-native";
 import FlashMessage from "react-native-flash-message";
 import SplashScreens from "./app/components/SplashScreens";
 import Login from "./app/screens/auth/loginScreen";
@@ -14,21 +15,24 @@ import Transcription from "./app/screens/voice/Transcription";
 import VoiceRecordScreen from "./app/screens/voice/ViceRecorder";
 
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import { initialWindowMetrics, SafeAreaProvider } from "react-native-safe-area-context";
 import type { RootStackParamList } from "./app/types/navigation";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   const [showSplashScreens, setShowSplashScreens] = useState(true);
-
-  if (showSplashScreens) {
-    return <SafeAreaProvider><SplashScreens onComplete={() => setShowSplashScreens(false)} /></SafeAreaProvider>;
-  }
+  // Scene startup can precede native safe-area metrics. Render immediately,
+  // then let the provider update the insets when its native event arrives.
+  const [startupMetrics] = useState(() => initialWindowMetrics ?? {
+    frame: { x: 0, y: 0, width: Dimensions.get("window").width, height: Dimensions.get("window").height },
+    insets: { top: 0, right: 0, bottom: 0, left: 0 },
+  });
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
+      <SafeAreaProvider initialMetrics={startupMetrics}>
+      {showSplashScreens ? <SplashScreens onComplete={() => setShowSplashScreens(false)} /> : <>
       <FlashMessage position={'top'} />
       <BottomSheetModalProvider>
         <NavigationContainer>
@@ -46,6 +50,7 @@ export default function App() {
           </Stack.Navigator>
         </NavigationContainer>
       </BottomSheetModalProvider>
+      </>}
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

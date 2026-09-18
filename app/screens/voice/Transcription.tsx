@@ -10,8 +10,10 @@ import type { ConversationMessage, ScreenProps } from "types/navigation";
 export default function Transcript({ route, navigation }: ScreenProps<"Transcript">) {
   const { patient, transcription, showChat } = route.params?.data || {};
   const [loading, setLoading] = React.useState(false);
+  const processingRef = React.useRef(false);
   const handleProceed = async () => {
-    if (loading) return;
+    if (processingRef.current) return;
+    processingRef.current = true;
     try {
       setLoading(true);
       const noteData = await generateAINotes(transcription, patient?.patient_id);
@@ -25,6 +27,7 @@ export default function Transcript({ route, navigation }: ScreenProps<"Transcrip
     } catch (err) {
       faildMessage(err instanceof Error ? err.message : "Clinical note generation failed. Please try again.");
     } finally {
+      processingRef.current = false;
       setLoading(false);
     }
   };

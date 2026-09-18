@@ -24,6 +24,7 @@ function VoiceRecordScreen({ navigation, route }: ScreenProps<"Voice">) {
   const patient = route.params?.patient || {};
   const autoStart = route.params?.autoStart === true;
   const [loading, setLoading] = React.useState(false);
+  const processingRef = React.useRef(false);
   const {
     isRecording,
     isPaused,
@@ -61,7 +62,8 @@ function VoiceRecordScreen({ navigation, route }: ScreenProps<"Voice">) {
   };
 
   const handleProceed = async () => {
-    if (!recordedUri || loading) return;
+    if (!recordedUri || processingRef.current) return;
+    processingRef.current = true;
 
     try {
       setLoading(true);
@@ -79,11 +81,13 @@ function VoiceRecordScreen({ navigation, route }: ScreenProps<"Voice">) {
     } catch (err) {
       faildMessage(err instanceof Error ? err.message : "Audio transcription failed. Please try again.");
     } finally {
+      processingRef.current = false;
       setLoading(false);
     }
   };
   const handleSampleload = async () => {
-    if (loading) return;
+    if (processingRef.current) return;
+    processingRef.current = true;
     try {
       setLoading(true);
       const data = await generateChat(SAMPLE_NOTE);
@@ -98,6 +102,7 @@ function VoiceRecordScreen({ navigation, route }: ScreenProps<"Voice">) {
     } catch (err) {
       faildMessage(err instanceof Error ? err.message : "Sample processing failed. Please try again.");
     } finally {
+      processingRef.current = false;
       setLoading(false);
     }
   };

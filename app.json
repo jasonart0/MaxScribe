@@ -2,7 +2,8 @@
   "expo": {
     "name": "MaxScribe",
     "slug": "MaxScribe",
-    "version": "1.0.0",
+    "owner": "jasonart",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "maxscribe",
@@ -10,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.maxremind.MaxScribeAI",
-      "buildNumber": "23",
+      "buildNumber": "2",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
