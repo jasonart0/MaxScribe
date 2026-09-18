@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
 import { useIsFocused } from "@react-navigation/native";
-import { Animated, Easing, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Animated, Easing, StyleSheet, View } from "react-native";
 import Svg, { Circle, Defs, Ellipse, LinearGradient, Path, RadialGradient, Rect, Stop } from "react-native-svg";
 
 export function RecordingBackdrop() {
@@ -37,8 +37,8 @@ export function RecordingBackdrop() {
   </View>;
 }
 
-export default function RecordingMic({ size, active, processing, stage }: {
-  size: number; active: boolean; processing: boolean; stage: "transcribing" | "conversation";
+export default function RecordingMic({ size, active, processing, stage, progress }: {
+  size: number; active: boolean; processing: boolean; stage: "transcribing" | "conversation"; progress?: number;
 }) {
   const [pulse] = useState(() => new Animated.Value(0));
   const [glow] = useState(() => new Animated.Value(1));
@@ -62,7 +62,7 @@ export default function RecordingMic({ size, active, processing, stage }: {
     ] }]}>
       <View style={styles.innerHalo} />
     </Animated.View>
-    {processing && <TranscriptionRing size={size} stage={stage} />}
+    {processing && <TranscriptionRing size={size} stage={stage} progress={progress ?? 8} />}
     <Svg width={size * (processing ? 0.36 : 0.53)} height={size * (processing ? 0.48 : 0.7)} viewBox="0 0 120 160"
       style={processing ? { marginTop: -size * 0.16 } : undefined}>
       <Path d="M30 40a30 30 0 0 1 60 0v60a30 30 0 0 1-60 0V40z M18 86v14a42 42 0 0 0 84 0V86 M60 142v15 M31 64h17 M31 74h17 M31 84h17 M31 94h17 M31 104h17 M72 64h17 M72 74h17 M72 84h17 M72 94h17 M72 104h17"
@@ -71,24 +71,18 @@ export default function RecordingMic({ size, active, processing, stage }: {
   </View>;
 }
 
-function TranscriptionRing({ size, stage }: { size: number; stage: "transcribing" | "conversation" }) {
-  const [estimate, setEstimate] = useState(8);
-  const progress = stage === "conversation" ? 94 : estimate;
-  useEffect(() => {
-    const interval = setInterval(() => setEstimate((value) => Math.min(88, value + Math.max(1, Math.round((88 - value) / 14)))), 1400);
-    return () => clearInterval(interval);
-  }, []);
+function TranscriptionRing({ size, stage, progress }: { size: number; stage: "transcribing" | "conversation"; progress: number }) {
+  const ringProgress = stage === "conversation" ? Math.max(progress, 94) : progress;
   const radius = size / 2 - 8;
   const circumference = 2 * Math.PI * radius;
   return <View style={styles.ring} accessibilityRole="progressbar" accessibilityLabel="Estimated transcription progress"
-    accessibilityValue={{ min: 0, max: 100, now: progress }}>
+    accessibilityValue={{ min: 0, max: 100, now: ringProgress }}>
     <Svg width={size} height={size}>
       <Circle cx={size / 2} cy={size / 2} r={radius} stroke="#FFFFFF" strokeOpacity={0.15} strokeWidth={5} fill="none" />
       <Circle cx={size / 2} cy={size / 2} r={radius} stroke="#D7F5FF" strokeWidth={5} fill="none" strokeLinecap="round"
-        strokeDasharray={`${circumference} ${circumference}`} strokeDashoffset={circumference * (1 - progress / 100)}
+        strokeDasharray={`${circumference} ${circumference}`} strokeDashoffset={circumference * (1 - ringProgress / 100)}
         rotation={-90} origin={`${size / 2}, ${size / 2}`} />
     </Svg>
-    <Text style={[styles.percentage, { top: size * 0.65, fontSize: size * 0.12 }]}>{progress}%</Text>
   </View>;
 }
 

@@ -22,6 +22,7 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
   const [loadingAction, setLoadingAction] = React.useState<"proceed" | "sample" | null>(null);
   const [processingStage, setProcessingStage] = React.useState<"transcribing" | "conversation">("transcribing");
   const [processingClip, setProcessingClip] = React.useState(1);
+  const [processingProgress, setProcessingProgress] = React.useState(8);
   const processingRef = React.useRef(false);
   const { isRecording, isPaused, isBusy, recordingError, timer, metering, formatTime,
     startRecording, pauseRecording, resumeRecording, stopRecording } = useVoiceRecorder();
@@ -93,9 +94,21 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
     finally { processingRef.current = false; setLoading(false); setLoadingAction(null); }
   };
 
+  React.useEffect(() => {
+    if (!processing) {
+      setProcessingProgress(8);
+      return;
+    }
+    const interval = setInterval(() => {
+      setProcessingProgress((value) => Math.min(88, value + Math.max(1, Math.round((88 - value) / 14))));
+    }, 1400);
+    return () => clearInterval(interval);
+  }, [processing]);
+
   const title = processing ? "Transcribing" : isPaused ? "Paused" : isRecording ? "Recording" : clips.length ? "Recording saved" : "Ready to record";
   const status = processing ? processingStage === "transcribing" ? `Transcribing clip ${processingClip} of ${clips.length}...` : "Preparing conversation..."
     : isPaused ? "Tap resume when you're ready." : isRecording ? "Recording..." : clips.length ? "Preview your clips or record another." : "Tap the microphone to begin.";
+  const progressLabel = processing ? `${processingProgress}%` : formatTime(timer);
 
   return <ScreenWrapper title="Patient Visit" scrollEnabled background={<RecordingBackdrop />}
     barStyle="light-content" statusBarColor="#061C55"
@@ -130,13 +143,13 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.subtitle}>{processing ? "Turning your recordings into a transcript." : "Speak clearly, we’re listening."}</Text>
       <View style={styles.mic}><RecordingMic size={heroSize} active={isRecording && !isPaused && !processing}
-        processing={processing} stage={processingStage} /></View>
-      <Text style={styles.timer}>{formatTime(timer)}</Text>
+        processing={processing} stage={processingStage} progress={processingProgress} /></View>
+      <Text style={styles.timer}>{progressLabel}</Text>
       <Text style={styles.status} accessibilityLiveRegion="polite">{status}</Text>
       {processing && <Text style={styles.estimate}>Estimated progress</Text>}
       {!processing && <RecordingWaves active={isRecording && !isPaused} metering={metering} />}
       {!!recordingError && <Text accessibilityRole="alert" style={styles.error}>{recordingError}</Text>}
-      <View style={styles.controls}>
+      <View style={styles.bottomControls}>
         {isRecording ? <>
           <View style={styles.control}><TouchableOpacity accessibilityRole="button" accessibilityLabel={isPaused ? "Resume recording" : "Pause recording"}
             disabled={isBusy || loading} style={styles.sideButton} onPress={isPaused ? resumeRecording : pauseRecording}>
@@ -164,6 +177,7 @@ const styles = StyleSheet.create({
   timer: { color: "#FFFFFF", fontSize: 38, fontWeight: "300", fontVariant: ["tabular-nums"] },
   status: { color: "#BDE8FF", fontSize: 14, marginTop: 3, marginBottom: 4, textAlign: "center" },
   estimate: { color: "#BDE8FF", fontSize: 11, marginTop: 8 },
+  bottomControls: { flexDirection: "row", justifyContent: "space-evenly", width: "100%", alignItems: "flex-end", marginTop: "auto", paddingTop: 16, paddingBottom: 4 },
   controls: { flexDirection: "row", justifyContent: "space-evenly", width: "100%", alignItems: "center", marginTop: 12 },
   control: { alignItems: "center", gap: 8 },
   sideButton: { width: 62, height: 62, borderRadius: 31, borderWidth: 1.5, borderColor: "rgba(197,235,255,0.4)", alignItems: "center", justifyContent: "center" },
