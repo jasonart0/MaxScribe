@@ -2,6 +2,39 @@ import { getUserData } from "lib/authdata";
 import axios from "./axiosInstance";
 import { assertApiSuccess, extractList } from "./response";
 
+const dedupePatients = (patients = []) => {
+  if (!Array.isArray(patients)) return [];
+
+  const seen = new Set();
+  const unique = [];
+
+  for (const patient of patients) {
+    if (!patient || typeof patient !== "object") continue;
+
+    const patientId = patient.patient_id ?? patient.id ?? patient.patientId ?? patient.patientID ?? patient.account_id ?? patient.accountId ?? patient.alternate_account;
+    const key = patientId == null ? null : String(patientId).trim();
+
+    if (key && !seen.has(key)) {
+      seen.add(key);
+      unique.push(patient);
+      continue;
+    }
+
+    if (!key) {
+      const fallbackKey = [patient.name, patient.dob, patient.cell_phone, patient.home_phone]
+        .filter(Boolean)
+        .map((value) => String(value).trim())
+        .join("|");
+
+      if (!fallbackKey || seen.has(fallbackKey)) continue;
+      seen.add(fallbackKey);
+      unique.push(patient);
+    }
+  }
+
+  return unique;
+};
+
 async function searchPatients(text = "", filter = "ALL", providerId = "", locationId = "") {
   const user = await getUserData();
   const normalizedText = text.trim();
@@ -17,7 +50,7 @@ async function searchPatients(text = "", filter = "ALL", providerId = "", locati
       pageIndex: 0,
       pageSize: 0,
     });
-    return extractList(response.data);
+    return dedupePatients(extractList(response.data));
   }
 
   if (!user?.username) throw new Error("Your session has expired. Please sign in again.");
