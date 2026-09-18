@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { baseURL } from "constants/base";
 import { Platform } from "react-native";
 import { assertApiSuccess, unwrapData } from "./response";
+import api from "./axiosInstance";
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024;
 
@@ -24,20 +25,38 @@ const requestAssistant = async (endpoint, formData) => {
   let response;
   let result;
   try {
-    response = await fetch(`${baseURL}/ai-assistant/${endpoint}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/json",
-        // Let fetch add the multipart boundary on both native and web.
-      },
-      body: formData,
-      signal: controller.signal,
-    });
-    result = safeParseJson(await response.text());
+    if (Platform.OS !== "web") {
+      // Expo 57's global fetch rejects RN file URI parts. XHR delegates these
+      // parts to native networking, which reads the file and builds the boundary.
+      const nativeResponse = await api.post(`/ai-assistant/${endpoint}`, formData, {
+        adapter: "xhr",
+        timeout: 120000,
+        signal: controller.signal,
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/json", "Content-Type": "multipart/form-data" },
+      });
+      response = { ok: true, status: nativeResponse.status };
+      result = safeParseJson(nativeResponse.data);
+    } else {
+      response = await fetch(`${baseURL}/ai-assistant/${endpoint}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+          // The browser supplies the multipart boundary.
+        },
+        body: formData,
+        signal: controller.signal,
+      });
+      result = safeParseJson(await response.text());
+    }
   } catch (error) {
-    if (error?.name === "AbortError") throw new Error("AI processing timed out. Please try again.");
-    throw new Error("Unable to reach the AI service. Check your connection and try again.");
+    if (controller.signal.aborted || error?.name === "AbortError" || error?.code === "ECONNABORTED" || error?.code === "ETIMEDOUT") throw new Error("AI processing timed out. Please try again.");
+    if (error?.response) {
+      response = { ok: false, status: error.response.status };
+      result = safeParseJson(error.response.data);
+    } else {
+      throw new Error("Unable to reach the AI service. Check your connection and try again.");
+    }
   } finally { clearTimeout(timeout); }
   if (!response.ok || result?.success === false) {
     if (response.status === 401) throw new Error("Your session has expired. Please sign in again.");
@@ -104,7 +123,7 @@ export const sendToAPI = async (uri, options = {}) => {
     formData.append("audioFile", { uri, name, type: mimeTypes[fileExtension] || "audio/mp4" });
   }
   const result = await requestAssistant("transcribeAudio", formData);
-  const data = safeParseJson(result?.data ?? result);
+  const data = safeParseJson(unwrapData(result));
   const content = safeParseJson(data?.content);
   const transcript = typeof data === "string" ? data
     : data?.text ?? data?.transcription ?? data?.transcript
@@ -145,6 +164,6 @@ export const generateAINotes = async (transcript, patientId) => {
     param_list: [{ name: "patient_id", value: patientId }],
   });
   const content = safeParseJson(unwrapData(result)?.content);
-  if (!content || Array.isArray(content) || (typeof content === "object" && !Object.keys(content).length)) throw new Error("No clinical notes were returned. Please try again.");
+  if (!content || !["string", "object"].includes(typeof content) || Array.isArray(content) || (typeof content === "string" && !content.trim()) || (typeof content === "object" && !Object.keys(content).length)) throw new Error("No clinical notes were returned. Please try again.");
   return typeof content === "string" ? { text: content } : content;
 };

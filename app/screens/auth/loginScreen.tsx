@@ -83,11 +83,12 @@ export default function LoginScreen({ navigation }: any) {
       }
 
       let saved = true;
+      let browserDeclined = false;
       try {
-        if (savePassword) await saveLoginCredentials(email.trim(), password);
+        if (savePassword) browserDeclined = (await saveLoginCredentials(email.trim(), password)) === false;
         else await clearSavedLogin();
       } catch { saved = false; }
-      if (saved) successMessage("Login Successful");
+      if (saved) successMessage("Login Successful", browserDeclined ? "Use your browser's password manager to save your password." : "");
       else faildMessage("Signed in, but the saved password setting could not be updated.");
       navigation.replace("Home");
     } catch (error) {

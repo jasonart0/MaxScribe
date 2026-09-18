@@ -30,7 +30,7 @@ test('web saved passwords stay in the browser manager, normal storage holds only
   let credential; let prevented = false;
   class Password { constructor(data) { Object.assign(this, data, { type: 'password' }); } }
   global.window = { PasswordCredential: Password, isSecureContext: true };
-  Object.defineProperty(global, 'navigator', { configurable: true, value: { credentials: { store: async (value) => { credential = value; }, get: async () => credential, preventSilentAccess: async () => { prevented = true; } } } });
+  Object.defineProperty(global, 'navigator', { configurable: true, value: { credentials: { store: async (value) => { credential = value; return value; }, get: async () => credential, preventSilentAccess: async () => { prevented = true; } } } });
   const storage = memoryStorage();
   try {
     const module = loadApp('app/lib/savedLogin.web.ts', { '@react-native-async-storage/async-storage': storage });
@@ -40,6 +40,51 @@ test('web saved passwords stay in the browser manager, normal storage holds only
     await module.clearSavedLogin();
     assert.equal(storage.values.size, 0); assert.equal(prevented, true);
   } finally { global.window = oldWindow; if (oldNavigator) Object.defineProperty(global, 'navigator', oldNavigator); else delete global.navigator; }
+});
+
+test('browser mediation rejection does not fail clearing the saved-password preference', async () => {
+  const oldWindow = global.window; const oldNavigator = Object.getOwnPropertyDescriptor(global, 'navigator');
+  class Password {}
+  global.window = { PasswordCredential: Password, isSecureContext: true };
+  let retrieved = false;
+  Object.defineProperty(global, 'navigator', { configurable: true, value: { credentials: {
+    store: async () => null,
+    get: async () => { retrieved = true; return null; },
+    preventSilentAccess: async () => { throw new DOMException('Blocked in embedded browser', 'NotAllowedError'); },
+  } } });
+  const storage = memoryStorage({ 'maxscribe.saved-login-email': 'test-doctor' });
+  try {
+    const module = loadApp('app/lib/savedLogin.web.ts', { '@react-native-async-storage/async-storage': storage });
+    await module.clearSavedLogin();
+    assert.equal(storage.values.size, 0);
+    assert.equal(await module.getSavedLogin(), null);
+    assert.equal(retrieved, false);
+  } finally { global.window = oldWindow; if (oldNavigator) Object.defineProperty(global, 'navigator', oldNavigator); else delete global.navigator; }
+});
+
+test('browser password-save refusals do not persist credentials or a false saved preference', async () => {
+  const oldWindow = global.window; const oldNavigator = Object.getOwnPropertyDescriptor(global, 'navigator');
+  class Password { constructor(data) { Object.assign(this, data); } }
+  global.window = { PasswordCredential: Password, isSecureContext: true };
+  const storage = memoryStorage();
+  try {
+    for (const name of ['NotAllowedError', 'SecurityError', 'NotSupportedError']) {
+      Object.defineProperty(global, 'navigator', { configurable: true, value: { credentials: {
+        store: async () => { throw new DOMException('Browser declined saving', name); },
+        get: async () => null,
+      } } });
+      const module = loadApp('app/lib/savedLogin.web.ts', { '@react-native-async-storage/async-storage': storage });
+      assert.equal(await module.saveLoginCredentials('test-doctor', 'test-password'), false);
+      assert.equal(storage.values.size, 0);
+    }
+  } finally { global.window = oldWindow; if (oldNavigator) Object.defineProperty(global, 'navigator', oldNavigator); else delete global.navigator; }
+});
+
+test('real storage failures still reject saved-password updates', async () => {
+  const module = loadApp('app/lib/savedLogin.ts', { 'expo-secure-store': {
+    setItemAsync: async () => { throw new Error('Keychain unavailable'); },
+  } });
+  await assert.rejects(module.saveLoginCredentials('test-doctor', 'test-password'), /Keychain unavailable/);
 });
 
 test('unsupported browsers never fall back to storing a plain password', async () => {

@@ -1,6 +1,7 @@
 import { Entypo } from "@expo/vector-icons";
 import { faildMessage, setHeight } from "@lib";
 import Slider from "@react-native-community/slider";
+import { useIsFocused } from "@react-navigation/native";
 import { COLORS } from "constants/Colors";
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import React, { useEffect } from "react";
@@ -13,6 +14,15 @@ interface Props {
 const PlayRecordedAudio: React.FC<Props> = ({ uri }) => {
   const player = useAudioPlayer(uri);
   const status = useAudioPlayerStatus(player);
+  const focused = useIsFocused();
+
+  useEffect(() => {
+    if (!focused) player.pause();
+  }, [focused, player]);
+
+  useEffect(() => {
+    if (status.error) faildMessage("Unable to load this recording. Please record again.");
+  }, [status.error]);
 
   useEffect(() => {
     const prepareAudio = async () => {
@@ -30,6 +40,7 @@ const PlayRecordedAudio: React.FC<Props> = ({ uri }) => {
   }, [player]);
 
   const togglePlayPause = async () => {
+    if (!status.isLoaded || status.error) return;
     try {
       if (status.playing) {
         player.pause();
@@ -45,6 +56,7 @@ const PlayRecordedAudio: React.FC<Props> = ({ uri }) => {
   };
 
   const handleSeek = async (value: number) => {
+    if (!status.isLoaded || status.error) return;
     try {
       await player.seekTo(value / 1000);
     } catch {
@@ -63,7 +75,7 @@ const PlayRecordedAudio: React.FC<Props> = ({ uri }) => {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity onPress={togglePlayPause} style={styles.playButton}>
+      <TouchableOpacity disabled={!status.isLoaded || Boolean(status.error)} onPress={togglePlayPause} style={styles.playButton}>
         <Entypo
           name={status.playing ? "controller-paus" : "controller-play"}
           size={setHeight(5)}
@@ -78,6 +90,7 @@ const PlayRecordedAudio: React.FC<Props> = ({ uri }) => {
           maximumValue={(status.duration || 1) * 1000}
           value={status.currentTime * 1000}
           onSlidingComplete={handleSeek}
+          disabled={!status.isLoaded || Boolean(status.error)}
           minimumTrackTintColor={COLORS.primary}
           maximumTrackTintColor="#ccc"
           thumbTintColor={COLORS.primary}

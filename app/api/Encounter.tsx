@@ -20,7 +20,9 @@ export const savePatientScribeData = async (scribeData: ScribeData) => {
       throw new Error("Patient, practice, provider, location and place of service are required to save an encounter.");
     }
   }
-  const note = JSON.parse(scribeData.notes_data);
+  let note;
+  try { note = JSON.parse(scribeData.notes_data); }
+  catch { throw new Error("The clinical note format is invalid. Please generate the note again."); }
   if (!note || typeof note !== "object" || Array.isArray(note) || !Object.keys(note).length) throw new Error("No clinical note is available to save.");
   const response = await api.post("/encounter/savePatientScribeData", scribeData);
   assertApiSuccess(response.data);

@@ -17,6 +17,7 @@ export async function saveLoginCredentials(email: string, password: string) {
   await SecureStore.setItemAsync(KEY, JSON.stringify({ email, password }), {
     keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
   });
+  return true;
 }
 
 export async function clearSavedLogin() {

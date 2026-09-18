@@ -13,13 +13,21 @@ export const useVoiceRecorder = () => {
   const [isPaused, setIsPaused] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const [recordingError, setRecordingError] = useState<string | null>(null);
+  const [completedDuration, setCompletedDuration] = useState(0);
+  const busyRef = useRef(false);
+  const sessionRef = useRef(false);
   const recorder = useAudioRecorder({
     ...RecordingPresets.HIGH_QUALITY,
     isMeteringEnabled: true, // Read microphone levels for the visual waves only.
+  }, (status) => {
+    if (status.hasError || status.mediaServicesDidReset) {
+      sessionRef.current = false;
+      setIsRecording(false);
+      setIsPaused(false);
+      setRecordingError(status.error || "Recording was interrupted. Please record again.");
+    }
   });
   const recorderState = useAudioRecorderState(recorder, 100);
-  const busyRef = useRef(false);
-  const sessionRef = useRef(false);
 
   const startRecording = useCallback(async () => {
     if (busyRef.current || sessionRef.current) return false;
@@ -31,6 +39,7 @@ export const useVoiceRecorder = () => {
       if (!permission.granted) throw new Error("Allow microphone access to record audio.");
       await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
       await recorder.prepareToRecordAsync();
+      setCompletedDuration(0);
       sessionRef.current = true;
       recorder.record();
       setIsRecording(true);
@@ -75,9 +84,12 @@ export const useVoiceRecorder = () => {
     setIsBusy(true);
     setRecordingError(null);
     try {
+      // iOS resets Expo's duration counter when stop() finishes.
+      const duration = recorder.getStatus().durationMillis;
       await recorder.stop();
       sessionRef.current = false;
       if (!recorder.uri) throw new Error("No recording was saved. Please record again.");
+      setCompletedDuration(duration);
       return recorder.uri;
     } catch (error) {
       await recorder.stop().catch(() => {});
@@ -97,7 +109,7 @@ export const useVoiceRecorder = () => {
     sessionRef.current = false;
   }, [recorder]);
 
-  const timer = Math.floor(recorderState.durationMillis / 1000);
+  const timer = Math.floor((isRecording ? recorderState.durationMillis : completedDuration) / 1000);
   const formatTime = (seconds: number) => [
     Math.floor(seconds / 3600), Math.floor((seconds % 3600) / 60), seconds % 60,
   ].map((value) => String(value).padStart(2, "0")).join(":");

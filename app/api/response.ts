@@ -5,8 +5,12 @@ export function unwrapData(response: any): any {
 }
 
 export function assertApiSuccess(response: any): void {
-  if (response?.success === false || response?.data?.success === false) {
-    throw new Error(apiErrorMessage(response, "The request could not be completed. Please try again."));
+  let data = response;
+  for (let depth = 0; depth <= 4 && data && typeof data === "object"; depth++) {
+    if (data.success === false) {
+      throw new Error(apiErrorMessage(data, "The request could not be completed. Please try again."));
+    }
+    data = data.data;
   }
 }
 

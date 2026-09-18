@@ -5,23 +5,26 @@ const { loadApp, hookHarness } = require('./load-app.cjs');
 function recording(options = {}) {
   const harness = hookHarness();
   const calls = [];
+  let duration = 1500;
+  let listener;
   const recorder = {
     uri: 'file:///test.m4a',
     async prepareToRecordAsync() { calls.push('prepare'); },
     record() { calls.push('record'); },
     pause() { calls.push('pause'); },
-    async stop() { calls.push('stop'); if (options.stopFailure) throw new Error('stop failed'); },
+    getStatus() { return { durationMillis: duration }; },
+    async stop() { calls.push('stop'); if (options.stopFailure) throw new Error('stop failed'); duration = 0; },
   };
   let preset;
   const expo = {
     RecordingPresets: { HIGH_QUALITY: { extension: '.m4a', sampleRate: 44100 } },
     async requestRecordingPermissionsAsync() { calls.push('permission'); return { granted: options.permission !== false }; },
     async setAudioModeAsync(mode) { calls.push(mode); },
-    useAudioRecorder(value) { preset = value; return recorder; },
-    useAudioRecorderState() { return { durationMillis: 1500, metering: -20 }; },
+    useAudioRecorder(value, callback) { preset = value; listener = callback; return recorder; },
+    useAudioRecorderState() { return { durationMillis: duration, metering: -20 }; },
   };
   const { useVoiceRecorder } = loadApp('app/hooks/useAudioRecording.tsx', { react: harness.react, 'expo-audio': expo });
-  return { get: () => harness.render(useVoiceRecorder), calls, recorder, preset: () => preset, unmount: harness.unmount };
+  return { get: () => harness.render(useVoiceRecorder), calls, recorder, preset: () => preset, unmount: harness.unmount, notify: (status) => listener(status) };
 }
 
 test('recording uses the default Expo preset, metering only changes the wave display', async () => {
@@ -60,6 +63,18 @@ test('pause, resume and stop keep the recorded URI and reset the UI', async () =
   assert.equal(await state.get().stopRecording(), 'file:///test.m4a');
   assert.equal(state.get().isRecording, false);
   assert.equal(state.get().isBusy, false);
+  assert.equal(state.get().timer, 1);
+  assert.equal(await state.get().startRecording(), true);
+});
+
+test('Expo media service reset leaves recording mode and permits a fresh session', async () => {
+  const state = recording();
+  await state.get().startRecording();
+  await state.get().pauseRecording();
+  state.notify({ hasError: false, mediaServicesDidReset: true });
+  assert.equal(state.get().isRecording, false);
+  assert.equal(state.get().isPaused, false);
+  assert.match(state.get().recordingError, /interrupted/);
   assert.equal(await state.get().startRecording(), true);
 });
 
