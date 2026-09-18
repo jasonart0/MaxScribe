@@ -9,9 +9,12 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 interface Props {
   uri: string | null;
+  compact?: boolean;
+  neon?: boolean;
 }
 
-const PlayRecordedAudio: React.FC<Props> = ({ uri }) => {
+const PlayRecordedAudio: React.FC<Props> = ({ uri, compact = false, neon = false }) => {
+  const accent = neon ? "#8FFFF0" : COLORS.primary;
   const player = useAudioPlayer(uri);
   const status = useAudioPlayerStatus(player);
   const focused = useIsFocused();
@@ -74,32 +77,36 @@ const PlayRecordedAudio: React.FC<Props> = ({ uri }) => {
   if (!uri) return null;
 
   return (
-    <View style={styles.container}>
-      <TouchableOpacity disabled={!status.isLoaded || Boolean(status.error)} onPress={togglePlayPause} style={styles.playButton}>
+    <View style={[styles.container, compact && styles.compact, neon && { backgroundColor: "transparent" }]}>
+      <TouchableOpacity accessibilityRole="button" accessibilityLabel={status.playing ? "Pause clip" : "Play clip"}
+        disabled={!status.isLoaded || Boolean(status.error)} onPress={togglePlayPause} style={[styles.playButton, compact && styles.compactPlay]}>
         <Entypo
           name={status.playing ? "controller-paus" : "controller-play"}
-          size={setHeight(5)}
-          color={COLORS.primary}
+          size={compact ? 24 : setHeight(5)}
+          color={accent}
         />
       </TouchableOpacity>
 
       <View style={styles.sliderContainer}>
         <Slider
-          style={{ flex: 1 }}
+          style={{ flex: 1, ...(compact ? { height: 28 } : {}) }}
           minimumValue={0}
           maximumValue={(status.duration || 1) * 1000}
           value={status.currentTime * 1000}
           onSlidingComplete={handleSeek}
           disabled={!status.isLoaded || Boolean(status.error)}
-          minimumTrackTintColor={COLORS.primary}
-          maximumTrackTintColor="#ccc"
-          thumbTintColor={COLORS.primary}
+          minimumTrackTintColor={accent}
+          maximumTrackTintColor={neon ? "rgba(143,255,240,0.25)" : "#ccc"}
+          thumbTintColor={accent}
         />
-        <View style={styles.timeWrapper}>
+        {!compact && <View style={styles.timeWrapper}>
           <Text style={styles.time}>{formatTime(status.currentTime * 1000)}</Text>
           <Text style={styles.time}>{formatTime((status.duration || 1) * 1000)}</Text>
-        </View>
+        </View>}
       </View>
+      {compact && <Text style={[styles.time, { fontSize: 10, color: neon ? "#C6FFF6" : "#555", fontVariant: ["tabular-nums"] }]}>
+        {formatTime(status.currentTime * 1000)} / {formatTime((status.duration || 1) * 1000)}
+      </Text>}
     </View>
   );
 };
@@ -107,6 +114,8 @@ const PlayRecordedAudio: React.FC<Props> = ({ uri }) => {
 export default PlayRecordedAudio;
 
 const styles = StyleSheet.create({
+  compact: { width: "100%", padding: 0, gap: 4, borderRadius: 0 },
+  compactPlay: { minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center", padding: 0 },
   container: {
     flexDirection: "row",
     alignItems: "center",

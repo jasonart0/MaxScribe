@@ -1,21 +1,24 @@
 import React, { useEffect, useState } from "react";
+import { useIsFocused } from "@react-navigation/native";
 import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, Defs, Ellipse, LinearGradient, Path, RadialGradient, Rect, Stop } from "react-native-svg";
 
 export function RecordingBackdrop() {
+  const focused = useIsFocused();
   const [drift] = useState(() => new Animated.Value(0));
   useEffect(() => {
+    if (!focused) return;
     const animation = Animated.loop(Animated.sequence([
       Animated.timing(drift, { toValue: 1, duration: 4200, easing: Easing.inOut(Easing.ease), useNativeDriver: true, isInteraction: false }),
       Animated.timing(drift, { toValue: 0, duration: 4200, easing: Easing.inOut(Easing.ease), useNativeDriver: true, isInteraction: false }),
     ]));
     animation.start();
     return () => animation.stop();
-  }, [drift]);
+  }, [drift, focused]);
   return <View pointerEvents="none" style={styles.backdrop}>
     <Svg width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 400 850">
       <Defs><LinearGradient id="recordingBlue" x1="0" y1="0" x2="1" y2="1">
-        <Stop offset="0" stopColor="#061C55" /><Stop offset="0.5" stopColor="#066BC4" /><Stop offset="1" stopColor="#65CAFF" />
+        <Stop offset="0" stopColor="#061C55" /><Stop offset="0.5" stopColor="#066BC4" /><Stop offset="1" stopColor="#02DBC4" />
       </LinearGradient></Defs>
       <Rect width="400" height="850" fill="url(#recordingBlue)" />
     </Svg>
@@ -26,7 +29,7 @@ export function RecordingBackdrop() {
     ] }]}>
       <Svg width="100%" height="100%" viewBox="0 0 400 700">
         <Defs><RadialGradient id="blueFlame" cx="50%" cy="55%" rx="50%" ry="50%">
-          <Stop offset="0" stopColor="#B2E9FF" stopOpacity={0.55} /><Stop offset="0.5" stopColor="#5ECBFF" stopOpacity={0.3} /><Stop offset="1" stopColor="#5ECBFF" stopOpacity={0} />
+          <Stop offset="0" stopColor="#02DBC4" stopOpacity={0.55} /><Stop offset="0.5" stopColor="#02DBC4" stopOpacity={0.3} /><Stop offset="1" stopColor="#02DBC4" stopOpacity={0} />
         </RadialGradient></Defs>
         <Ellipse cx="200" cy="350" rx="200" ry="350" fill="url(#blueFlame)" />
       </Svg>

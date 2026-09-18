@@ -6,9 +6,9 @@ import PlayRecordedAudio from "components/AudioPlayer";
 import RecordingMic, { RecordingBackdrop, RecordingWaves } from "components/RecordingVisual";
 import { SAMPLE_NOTE } from "constants/dummyData";
 import { useVoiceRecorder } from "hooks/useAudioRecording";
-import type { ScreenProps } from "types/navigation";
 import * as React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from "react-native";
+import type { ScreenProps } from "types/navigation";
 
 type Clip = { id: number; uri: string; duration: number; transcript?: string };
 
@@ -109,20 +109,20 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
         {!isRecording && <Pressable accessibilityRole="button" accessibilityLabel="Record another clip" disabled={loading || isBusy}
           onPress={toggleRecording} style={styles.recordAgain}><Ionicons name="add" size={17} color="#D9F6FF" /><Text style={styles.recordAgainText}>Record again</Text></Pressable>}
       </View>
-      <ScrollView style={{ maxHeight: isRecording ? 70 : Math.min(185, height * 0.22) }} showsVerticalScrollIndicator={false}>
+      <ScrollView style={{ maxHeight: isRecording ? 60 : Math.min(135, height * 0.17) }} showsVerticalScrollIndicator={false}>
         {clips.map((clip, index) => <View key={clip.id} style={styles.clipCard}>
           <View style={styles.clipHeading}><Text style={styles.clipTitle}>Clip {index + 1} · {formatTime(clip.duration)}</Text>
             <Pressable accessibilityRole="button" accessibilityLabel={`Delete clip ${index + 1}`} disabled={loading || isBusy || isRecording}
               hitSlop={8} onPress={() => setClips((previous) => previous.filter((item) => item.id !== clip.id))}>
-              <Ionicons name="trash-outline" size={18} color="#47739E" />
+              <Ionicons name="trash-outline" size={16} color="#A0FFF3" />
             </Pressable>
           </View>
-          {!isRecording && !isBusy && !loading && <PlayRecordedAudio uri={clip.uri} />}
+          {!isRecording && !isBusy && !loading && <PlayRecordedAudio uri={clip.uri} compact neon />}
         </View>)}
       </ScrollView>
-      {!isRecording && <View style={styles.actions}><CustomButton title="Proceed" onPress={handleProceed} disabled={loading || isBusy}
+      {!isRecording && <View style={styles.actions}><CustomButton title="Proceed" variant="neon" onPress={handleProceed} disabled={loading || isBusy}
         style={styles.proceed} textStyle={styles.proceedText} />
-        {__DEV__ && <CustomButton title="Load Sample" onPress={handleSampleload} isLoading={loading && loadingAction === "sample"}
+        {__DEV__ && <CustomButton title="Load Sample" variant="neon" onPress={handleSampleload} isLoading={loading && loadingAction === "sample"}
           disabled={loading || isRecording} style={styles.sample} />}
       </View>}
     </View> : null}>
@@ -177,11 +177,14 @@ const styles = StyleSheet.create({
   clipsTitle: { color: "#FFFFFF", fontSize: 15, fontWeight: "600" },
   recordAgain: { flexDirection: "row", alignItems: "center", gap: 4, minHeight: 36 },
   recordAgainText: { color: "#D9F6FF", fontSize: 13 },
-  clipCard: { borderRadius: 14, backgroundColor: "rgba(245,252,255,0.95)", padding: 10, marginBottom: 8 },
-  clipHeading: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  clipTitle: { color: "#20557F", fontSize: 12, fontWeight: "600" },
+  clipCard: { borderRadius: 12, backgroundColor: "transparent", borderWidth: 1, borderColor: "rgba(2,219,196,0.65)",
+    paddingHorizontal: 10, paddingVertical: 8, marginHorizontal: 2, marginBottom: 8,
+    minHeight: 64,
+    shadowColor: "#02DBC4", shadowOpacity: 0.25, shadowRadius: 5, shadowOffset: { width: 0, height: 0 } },
+  clipHeading: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", minHeight: 20, marginBottom: 4 },
+  clipTitle: { color: "#C6FFF6", fontSize: 11, fontWeight: "600" },
   actions: { flexDirection: "row", gap: 10 },
-  proceed: { flex: 1, width: "auto", backgroundColor: "#EDF9FF", shadowOpacity: 0, elevation: 0 },
-  proceedText: { color: "#0875BF", fontWeight: "600" },
-  sample: { flex: 1, width: "auto" },
+  proceed: { flex: 1, width: "auto", minHeight: 46, paddingVertical: 8 },
+  proceedText: { color: "#A0FFF3", fontWeight: "600" },
+  sample: { flex: 1, width: "auto", minHeight: 46, paddingVertical: 8 },
 });

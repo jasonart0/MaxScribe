@@ -21,7 +21,7 @@ function flow(options = {}) {
         stopRecording: async () => { setRecording(false); return 'file:///release-test.m4a'; } };
     } },
     'api/voice': {
-      uploadVoiceFile: async (uri) => { uploads.push(uri); if (options.uploadFailure) throw new Error('Transcription failed'); if (options.uploadPending) await options.uploadPending; return options.clipTexts?.[uploads.length - 1] || 'Synthetic release test'; },
+      uploadVoiceFile: async (uri) => { uploads.push(uri); if (options.uploadVoiceFile) return options.uploadVoiceFile(uri, uploads.length); if (options.uploadFailure) throw new Error('Transcription failed'); if (options.uploadPending) await options.uploadPending; return options.clipTexts?.[uploads.length - 1] || 'Synthetic release test'; },
       generateChat: async () => { if (options.chatFailure) throw new Error('Conversation failed'); if (options.chatPending) await options.chatPending; return [{ speaker: 'Doctor', text: 'Synthetic release test' }]; },
       generateAINotes: async (text, id) => { notes.push({ text, id }); if (options.noteFailure) throw new Error('Notes failed'); if (options.notePending) await options.notePending; return { hpi: text }; },
     },
@@ -146,4 +146,22 @@ test('deleting a clip excludes it from the combined transcription', async () => 
   findNodes(footer(), (node) => node.props?.accessibilityLabel === 'Delete clip 1')[0].props.onPress();
   await state.button().props.onPress();
   assert.equal(state.uploads.length, 1);
+});
+
+test('retrying a failed clip retains completed transcripts and does not upload them twice', async () => {
+  const state = flow({ uploadVoiceFile: async (_uri, attempt) => {
+    if (attempt === 2) throw new Error('Second clip failed');
+    return attempt === 1 ? 'First clip' : 'Second clip';
+  } });
+  const stop = () => findNodes(state.render(), (node) => node.props?.accessibilityLabel === 'Stop recording')[0].props.onPress();
+  await stop();
+  const footer = () => findNodes(state.render(), (node) => node.type === 'Screen')[0].props.footerUnScrollable();
+  await findNodes(footer(), (node) => node.props?.accessibilityLabel === 'Record another clip')[0].props.onPress();
+  await stop();
+  await state.button().props.onPress();
+  assert.equal(state.routes.length, 0);
+  assert.equal(findNodes(footer(), (node) => node.type === 'Player').length, 2);
+  await state.button().props.onPress();
+  assert.equal(state.uploads.length, 3);
+  assert.equal(state.routes[0].params.data.transcription, 'First clip\n\nSecond clip');
 });

@@ -4,10 +4,11 @@ import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 import LoadingOverlay from './LoadingOverlay';
 
-type Props = { title: string; onPress: () => void; style?: StyleProp<ViewStyle>; textStyle?: StyleProp<TextStyle>; isLoading?: boolean; disabled?: boolean; variant?: 'primary' | 'secondary' };
+type Props = { title: string; onPress: () => void; style?: StyleProp<ViewStyle>; textStyle?: StyleProp<TextStyle>; isLoading?: boolean; disabled?: boolean; variant?: 'primary' | 'secondary' | 'neon' };
 
 export default function CustomButton({ title, onPress, style, textStyle, isLoading, disabled = false, variant = 'primary' }: Props) {
   const secondary = variant === 'secondary';
+  const neon = variant === 'neon';
 
   return (
     <TouchableOpacity
@@ -15,11 +16,11 @@ export default function CustomButton({ title, onPress, style, textStyle, isLoadi
       accessibilityState={{ disabled: disabled || !!isLoading, busy: !!isLoading }}
       disabled={disabled || isLoading}
       onPress={onPress}
-      style={[styles.button, secondary && styles.secondary, style, disabled && !isLoading && { opacity: 0.5 }]}
+      style={[styles.button, secondary && styles.secondary, neon && styles.neon, style, disabled && !isLoading && { opacity: 0.5 }]}
     >
-      <Text style={[styles.text, secondary && { color: COLORS.primary }, textStyle]}>{title}</Text>
-      {isLoading && <LoadingOverlay backgroundColor={secondary ? COLORS.card : COLORS.primary}
-        color={secondary ? COLORS.primary : COLORS.card} />}
+      <Text style={[styles.text, secondary && { color: COLORS.primary }, neon && { color: '#A0FFF3' }, textStyle]}>{title}</Text>
+      {isLoading && <LoadingOverlay backgroundColor={neon ? '#07587A' : secondary ? COLORS.card : COLORS.primary}
+        color={neon ? '#02DBC4' : secondary ? COLORS.primary : COLORS.card} />}
     </TouchableOpacity>
   );
 }
@@ -43,6 +44,8 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   secondary: { backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.primary },
+  neon: { backgroundColor: 'rgba(2,219,196,0.08)', borderWidth: 1.2, borderColor: '#02DBC4',
+    shadowColor: '#02DBC4', shadowOpacity: 0.45, shadowRadius: 8, shadowOffset: { width: 0, height: 0 }, elevation: 3 },
   text: {
     color: COLORS.card,
     fontWeight: '700',
