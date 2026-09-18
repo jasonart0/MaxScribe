@@ -175,6 +175,7 @@ export default function HomeScreen({ navigation, route }: any) {
               onViewPress={() => openPatient(item)}
               isLoading={openingPatient === item.patient_id}
               disabled={openingPatient !== null}
+              showAppointmentInfo={filterTab === "TODAY_SCHEDULED"}
             />
           )}
         />

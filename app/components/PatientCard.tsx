@@ -18,6 +18,42 @@ type Patient = {
   home_phone?: string;
   alternate_account?: string | number;
   patient_id?: string | number;
+  appointment_date?: string | number | Date | null;
+  appointmentDate?: string | number | Date | null;
+  scheduled_date?: string | number | Date | null;
+  scheduledDate?: string | number | Date | null;
+  next_appointment?: string | number | Date | null;
+  nextAppointment?: string | number | Date | null;
+  appointment?: {
+    date?: string | number | Date | null;
+    start?: string | number | Date | null;
+    scheduled_date?: string | number | Date | null;
+    appointment_date?: string | number | Date | null;
+    appointment_time?: string | null;
+    start_time?: string | null;
+    time?: string | null;
+    status?: string | null;
+    app_status?: string | null;
+    appointment_status?: string | null;
+    datetime?: string | number | Date | null;
+    date_time?: string | number | Date | null;
+    scheduledAt?: string | number | Date | null;
+  } | null;
+  schedule?: {
+    date?: string | number | Date | null;
+    start?: string | number | Date | null;
+    time?: string | number | Date | null;
+    start_time?: string | null;
+  } | null;
+  appointment_time?: string | null;
+  start_time?: string | null;
+  time?: string | null;
+  app_status?: string | null;
+  appointment_status?: string | null;
+  visit_date?: string | number | Date | null;
+  visitDate?: string | number | Date | null;
+  appointmentStatus?: string | null;
+  [key: string]: unknown;
 };
 
 type PatientCardProps = {
@@ -26,6 +62,104 @@ type PatientCardProps = {
   onCallPress: () => void;
   isLoading?: boolean;
   disabled?: boolean;
+  showAppointmentInfo?: boolean;
+};
+
+const formatAppointmentDate = (value: string | number | Date | null | undefined) => {
+  if (value == null || value === "") return null;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+};
+
+const formatAppointmentTime = (value: string | number | Date | null | undefined) => {
+  if (value == null || value === "") return null;
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const match = trimmed.match(/(\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM|am|pm)?)/i);
+    if (match) return match[1].replace(/\s+/g, " ");
+    if (trimmed.includes("T")) {
+      const parsed = new Date(trimmed);
+      if (!Number.isNaN(parsed.getTime())) {
+        return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(parsed);
+      }
+    }
+    return trimmed;
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(date);
+};
+
+const getPatientAppointmentDate = (patient: Patient) => {
+  const dateCandidates = [
+    patient.appointment_date,
+    patient.appointmentDate,
+    patient.scheduled_date,
+    patient.scheduledDate,
+    patient.next_appointment,
+    patient.nextAppointment,
+    patient.appointment?.date,
+    patient.appointment?.start,
+    patient.appointment?.scheduled_date,
+    patient.appointment?.appointment_date,
+    patient.appointment?.datetime,
+    patient.appointment?.date_time,
+    patient.appointment?.scheduledAt,
+    patient.schedule?.date,
+    patient.schedule?.start,
+    patient.visit_date,
+    patient.visitDate,
+  ];
+
+  const timeCandidates = [
+    patient.appointment_time,
+    patient.start_time,
+    patient.time,
+    patient.appointment?.appointment_time,
+    patient.appointment?.start_time,
+    patient.appointment?.time,
+    patient.appointment?.datetime,
+    patient.appointment?.date_time,
+    patient.schedule?.time,
+    patient.schedule?.start_time,
+  ];
+
+  for (const candidate of dateCandidates) {
+    const formattedDate = formatAppointmentDate(candidate);
+    if (formattedDate) {
+      const timeSource = timeCandidates.find((item) => item != null && item !== "") ?? candidate;
+      const formattedTime = formatAppointmentTime(timeSource);
+      return formattedTime ? `${formattedDate} • ${formattedTime}` : formattedDate;
+    }
+  }
+
+  return null;
+};
+
+const getAppointmentStatus = (patient: Patient) => {
+  const values = [
+    patient.appointment?.status,
+    patient.appointment?.app_status,
+    patient.appointment?.appointment_status,
+    patient.app_status,
+    patient.appointment_status,
+    patient.appointmentStatus,
+    patient.status,
+  ];
+
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+
+  return null;
 };
 
 const getStatusStyle = (status?: string) => {
@@ -50,12 +184,16 @@ const getStatusStyle = (status?: string) => {
   return { pill: styles.statusPillInfo, text: styles.statusTextInfo };
 };
 
-export default function PatientCard({ patient, onViewPress, onCallPress, isLoading = false, disabled = false }: PatientCardProps) {
+export default function PatientCard({ patient, onViewPress, onCallPress, isLoading = false, disabled = false, showAppointmentInfo = false }: PatientCardProps) {
   const fallbackImageUri = patient.pic
     ? patient.pic.startsWith("http") ? patient.pic : `${baseURL}/${patient.pic.replace(/^\//, "")}`
     : null;
   const imageUri = usePatientImage(patient.patient_id, fallbackImageUri);
   const statusStyle = getStatusStyle(patient.patient_status);
+  const appointmentDate = getPatientAppointmentDate(patient);
+  const appointmentStatus = getAppointmentStatus(patient);
+  const visibleStatus = showAppointmentInfo ? (appointmentStatus || patient.patient_status) : patient.patient_status;
+  const visibleStatusStyle = showAppointmentInfo ? getStatusStyle(appointmentStatus || patient.patient_status) : statusStyle;
 
   return (
     <View style={styles.card}>
@@ -71,12 +209,17 @@ export default function PatientCard({ patient, onViewPress, onCallPress, isLoadi
         <View style={styles.copy}>
           <View style={styles.nameRow}>
             <Text numberOfLines={1} style={styles.name}>{patient.name || "Unknown Patient"}</Text>
-            <View style={[styles.statusPill, statusStyle.pill]}>
-              <Text style={[styles.status, statusStyle.text]}>{patient.patient_status || "Patient"}</Text>
-            </View>
+            {!!visibleStatus && (
+              <View style={[styles.statusPill, visibleStatusStyle.pill]}>
+                <Text style={[styles.status, visibleStatusStyle.text]}>{visibleStatus}</Text>
+              </View>
+            )}
           </View>
           <Text style={styles.dob}>DOB: {patient.dob || "--"}</Text>
           <Text style={styles.dob}>Age: {getPatientAge(patient)} yrs</Text>
+          {!!showAppointmentInfo && !!appointmentDate && (
+            <Text style={styles.appointmentDate}>Appt: {appointmentDate}</Text>
+          )}
         </View>
       </View>
       <View style={styles.footer}>
@@ -129,6 +272,7 @@ const styles = StyleSheet.create({
   statusTextDanger: { color: "#C63B3B" },
   statusTextInfo: { color: "#1A73D8" },
   dob: { marginTop: 4, color: "#7285A8", fontSize: 12 },
+  appointmentDate: { marginTop: 4, color: "#0B7D6A", fontSize: 11, fontWeight: "700" },
   micButton: { position: "absolute", right: 12, top: 17, width: 44, height: 44, borderRadius: 22, alignItems: "center",
     justifyContent: "center", backgroundColor: "#E7F3FF" },
   footer: { marginTop: 9, minHeight: 36, borderTopWidth: 1, borderTopColor: "#E7EFFA",
