@@ -1,17 +1,18 @@
-import { CustomButton, ScreenWrapper } from "@components";
+import { ScreenWrapper } from "@components";
 import { Ionicons } from "@expo/vector-icons";
+import { faildMessage } from "@lib";
 import { useFocusEffect } from "@react-navigation/native";
-import { fetchPatients, fetchPatientsbySearch } from "api/patients";
+import { fetchPatients, fetchPatientsByFilter, fetchPatientsbySearch } from "api/patients";
 import { apiErrorMessage } from "api/response";
 import { COLORS } from "constants/Colors";
 import { useDebounce } from "hooks/useDebounce";
 import { preloadPatientHistory } from "lib/preload";
-import { faildMessage } from "@lib";
 import React, { useCallback, useRef, useState } from "react";
 import {
     FlatList,
     StyleSheet,
     Text,
+    TouchableOpacity,
     View,
 } from "react-native";
 import CustomSearchBar from "../../components/CustomSearchBar";
@@ -33,9 +34,10 @@ type Patient = {
 
 export default function HomeScreen({ navigation, route }: any) {
   const [search, setSearch] = useState("");
+  const [filterTab, setFilterTab] = useState<"ALL" | "TODAY_SCHEDULED">("ALL");
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [loadingTarget, setLoadingTarget] = useState<"search" | "retry" | "refresh">("search");
+  const [loadingTarget, setLoadingTarget] = useState<"search" | "refresh">("search");
   const [patients, setPatients] = useState<Patient[]>(route?.params?.initialPatients ?? []);
   const [loadError, setLoadError] = useState<string | null>(route?.params?.initialError ?? null);
   const [openingPatient, setOpeningPatient] = useState<string | number | null>(null);
@@ -44,15 +46,19 @@ export default function HomeScreen({ navigation, route }: any) {
   const requestId = useRef(0);
   const debouncedSearch = useDebounce(search.trim(), 500);
 
-  const loadPatients = useCallback(async (query: string, target: "search" | "retry" | "refresh" = "search") => {
+  const loadPatients = useCallback(async (query: string, target: "search" | "refresh" = "search", selectedFilter: "ALL" | "TODAY_SCHEDULED" = filterTab) => {
     const currentRequest = ++requestId.current;
     setLoading(true);
     setLoadingTarget(target);
     setRefreshing(target === "refresh");
     try {
-      const data = query
-        ? await fetchPatientsbySearch(query)
-        : await fetchPatients();
+      const data = selectedFilter === "TODAY_SCHEDULED"
+        ? query
+          ? await fetchPatientsbySearch(query, selectedFilter)
+          : await fetchPatientsByFilter(selectedFilter)
+        : query
+          ? await fetchPatientsbySearch(query)
+          : await fetchPatients();
       if (currentRequest === requestId.current) {
         setPatients(Array.isArray(data) ? data : []);
         setLoadError(null);
@@ -67,13 +73,13 @@ export default function HomeScreen({ navigation, route }: any) {
         setRefreshing(false);
       }
     }
-  }, []);
+  }, [filterTab]);
 
   useFocusEffect(useCallback(() => {
     if (preparedRef.current && !debouncedSearch) preparedRef.current = false;
-    else void loadPatients(debouncedSearch);
+    else void loadPatients(debouncedSearch, "search", filterTab);
     return () => { requestId.current += 1; };
-  }, [debouncedSearch, loadPatients]));
+  }, [debouncedSearch, filterTab, loadPatients]));
 
   const openPatient = async (patient: Patient) => {
     if (openingRef.current || patient.patient_id == null) return;
@@ -103,10 +109,33 @@ export default function HomeScreen({ navigation, route }: any) {
           value={search}
           placeholder="Search Patient"
           onChangeText={setSearch}
-          onPressSearch={() => loadPatients(search.trim())}
+          onPressSearch={() => loadPatients(search.trim(), "search", filterTab)}
           onPressAction={() => setSearch("")}
           isLoading={loading && loadingTarget === "search"}
         />
+
+        <View style={styles.filterTabs}>
+          {[
+            { key: "ALL", label: "All Patients" },
+            { key: "TODAY_SCHEDULED", label: "Today Scheduled" },
+          ].map((tab) => {
+            const active = filterTab === tab.key;
+            return (
+              <TouchableOpacity
+                key={tab.key}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                onPress={() => {
+                  setFilterTab(tab.key as "ALL" | "TODAY_SCHEDULED");
+                  void loadPatients(search.trim(), "search", tab.key as "ALL" | "TODAY_SCHEDULED");
+                }}
+                style={[styles.filterTab, active && styles.filterTabActive]}
+              >
+                <Text style={[styles.filterTabText, active && styles.filterTabTextActive]}>{tab.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
 
         <FlatList
           data={patients}
@@ -116,16 +145,16 @@ export default function HomeScreen({ navigation, route }: any) {
           }
           showsVerticalScrollIndicator={false}
           refreshing={refreshing}
-          onRefresh={() => loadPatients(debouncedSearch, "refresh")}
+          onRefresh={() => loadPatients(debouncedSearch, "refresh", filterTab)}
           contentContainerStyle={[
             styles.listContent,
             !patients.length && styles.emptyListContent,
           ]}
-          ListHeaderComponent={<View>
-            {!!loadError && !!patients.length && <Text accessibilityRole="alert" style={styles.emptyCopy}>{loadError}</Text>}
-            {!!loadError && <CustomButton title="Retry" variant="secondary"
-              isLoading={loading && loadingTarget === "retry"} onPress={() => loadPatients(search.trim(), "retry")} />}
-          </View>}
+          ListHeaderComponent={
+            !!loadError && !!patients.length ? (
+              <Text accessibilityRole="alert" style={styles.emptyCopy}>{loadError}</Text>
+            ) : null
+          }
           ListEmptyComponent={
             !loading ? (
               <View style={styles.emptyState}>
@@ -158,6 +187,45 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "transparent",
+  },
+  filterTabs: {
+    flexDirection: "row",
+    justifyContent: "flex-start",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 10,
+    flexWrap: "wrap",
+  },
+  filterTab: {
+    minHeight: 30,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#E3E8F5",
+    backgroundColor: "#F2F5FF",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  filterTabActive: {
+    backgroundColor: "#DFF6F1",
+    borderColor: "#A9E7DB",
+    shadowColor: "#A9E7DB",
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  filterTabText: {
+    color: "#6A7AB2",
+    fontSize: 11.5,
+    fontWeight: "700",
+    textAlign: "center",
+    letterSpacing: 0.15,
+  },
+  filterTabTextActive: {
+    color: "#0F8F7D",
   },
   listContent: {
     paddingHorizontal: 16,

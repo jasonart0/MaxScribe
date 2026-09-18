@@ -2,20 +2,37 @@ import { getUserData } from "lib/authdata";
 import axios from "./axiosInstance";
 import { assertApiSuccess, extractList } from "./response";
 
-async function searchPatients(text = "") {
+async function searchPatients(text = "", filter = "ALL", providerId = "", locationId = "") {
   const user = await getUserData();
+  const normalizedText = text.trim();
+  const paramList = [
+    { name: "location_id", value: String(locationId ?? "") },
+    { name: "provider_id", value: String(providerId ?? "") },
+  ];
+
+  if (filter === "TODAY_SCHEDULED") {
+    const response = await axios.post("/search/patient", {
+      param_list: paramList,
+      option: "TODAY_SCHEDULED",
+      pageIndex: 0,
+      pageSize: 0,
+    });
+    return extractList(response.data);
+  }
+
   if (!user?.username) throw new Error("Your session has expired. Please sign in again.");
   const response = await axios.post("/search/patient", {
-    param_list: text ? [{ name: "criteria", value: text }] : [{ name: "user_name", value: user.username }],
-    criteria: text,
-    option: text ? "DEFAULT" : "LATEST_OPENED",
+    param_list: normalizedText ? [...paramList, { name: "criteria", value: normalizedText }] : [{ name: "user_name", value: user.username }],
+    criteria: normalizedText,
+    option: normalizedText ? "DEFAULT" : "LATEST_OPENED",
     pageIndex: 0,
-    pageSize: text ? 50 : 0,
+    pageSize: normalizedText ? 50 : 0,
   });
   return extractList(response.data);
 }
 export const fetchPatients = () => searchPatients();
-export const fetchPatientsbySearch = (text) => searchPatients(text.trim());
+export const fetchPatientsByFilter = (filter = "TODAY_SCHEDULED") => searchPatients("", filter);
+export const fetchPatientsbySearch = (text, filter = "ALL") => searchPatients(text, filter);
 export const fetchPatientHistory = async (id) => {
   if (id == null || String(id).trim() === "") throw new Error("No patient was selected.");
   const response = await axios.get("/encounter/getPatientScribeData?patient_id=" + encodeURIComponent(id));
