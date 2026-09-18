@@ -94,6 +94,7 @@ export function RecordingWaves({ active, metering }: { active: boolean; metering
   const [amplitude] = useState(() => new Animated.Value(0.08));
   useEffect(() => {
     if (!active) return;
+    phase.setValue(0);
     const animation = Animated.loop(Animated.timing(phase, { toValue: 1, duration: 2400, easing: Easing.linear,
       useNativeDriver: true, isInteraction: false }));
     animation.start();

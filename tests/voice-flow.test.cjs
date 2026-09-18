@@ -14,9 +14,14 @@ function flow(options = {}) {
     '@lib': { setHeight: (value) => value, setWidth: (value) => value, faildMessage: (value) => messages.push(value) },
     'components/AnimationLoad': 'Loader', 'components/AudioPlayer': 'Player', 'components/RecordingWaveform': 'Wave',
     'components/AudioProcessingScreen': 'AudioProcessing',
-    'hooks/useAudioRecording': { useVoiceRecorder: () => ({ isRecording: true, timer: 5, formatTime: () => '00:00:05', stopRecording: async () => 'file:///release-test.m4a' }) },
+    'components/RecordingVisual': { __esModule: true, default: 'RecordingMic', RecordingBackdrop: 'Backdrop', RecordingWaves: 'Waves' },
+    'hooks/useAudioRecording': { useVoiceRecorder: () => {
+      const [isRecording, setRecording] = harness.react.useState(true);
+      return { isRecording, timer: 5, formatTime: () => '00:00:05', startRecording: async () => setRecording(true),
+        stopRecording: async () => { setRecording(false); return 'file:///release-test.m4a'; } };
+    } },
     'api/voice': {
-      uploadVoiceFile: async (uri) => { uploads.push(uri); if (options.uploadFailure) throw new Error('Transcription failed'); if (options.uploadPending) await options.uploadPending; return 'Synthetic release test'; },
+      uploadVoiceFile: async (uri) => { uploads.push(uri); if (options.uploadFailure) throw new Error('Transcription failed'); if (options.uploadPending) await options.uploadPending; return options.clipTexts?.[uploads.length - 1] || 'Synthetic release test'; },
       generateChat: async () => { if (options.chatFailure) throw new Error('Conversation failed'); if (options.chatPending) await options.chatPending; return [{ speaker: 'Doctor', text: 'Synthetic release test' }]; },
       generateAINotes: async (text, id) => { notes.push({ text, id }); if (options.noteFailure) throw new Error('Notes failed'); if (options.notePending) await options.notePending; return { hpi: text }; },
     },
@@ -48,7 +53,7 @@ test('failed transcription retains the clip and allows retry without navigating'
   assert.equal(state.routes.length, 0);
   assert.deepEqual(state.messages, ['Transcription failed']);
   assert.ok(!state.button().props.isLoading);
-  assert.equal(findNodes(state.render(), (node) => node.type === 'AudioProcessing')[0].props.visible, false);
+  assert.equal(findNodes(state.render(), (node) => node.type === 'RecordingMic')[0].props.processing, false);
   await state.button().props.onPress();
   assert.equal(state.uploads.length, 2);
 });
@@ -95,25 +100,50 @@ test('AI generation keeps the transcript visible with loading only on its action
   assert.equal(state.routes[0].screen, 'Notes');
 });
 
-test('Proceed shows the animated screen through transcription and conversation preparation', async () => {
+test('Proceed changes the recording mic to inline progress through transcription and conversation preparation', async () => {
   let finishUpload; let finishChat;
   const uploadPending = new Promise((resolve) => { finishUpload = resolve; });
   const chatPending = new Promise((resolve) => { finishChat = resolve; });
   const state = flow({ uploadPending, chatPending });
   await findNodes(state.render(), (node) => node.props?.accessibilityLabel === 'Stop recording')[0].props.onPress();
   const action = state.button().props.onPress();
-  const loader = () => findNodes(state.render(), (node) => node.type === 'AudioProcessing')[0];
-  assert.equal(loader().props.visible, true);
+  const loader = () => findNodes(state.render(), (node) => node.type === 'RecordingMic')[0];
+  assert.equal(loader().props.processing, true);
   assert.equal(loader().props.stage, 'transcribing');
-  assert.equal(loader().props.patientName, 'Release Test');
+  assert.equal(findNodes(state.render(), (node) => node.type === 'AudioProcessing').length, 0);
   assert.ok(!state.button().props.isLoading);
   assert.equal(state.button().props.disabled, true);
   assert.equal(state.routes.length, 0);
   finishUpload(); await new Promise((resolve) => setImmediate(resolve));
-  assert.equal(loader().props.visible, true);
+  assert.equal(loader().props.processing, true);
   assert.equal(loader().props.stage, 'conversation');
   assert.equal(state.routes.length, 0);
   finishChat(); await action;
-  assert.equal(loader().props.visible, false);
+  assert.equal(loader().props.processing, false);
   assert.equal(state.routes[0].screen, 'Transcript');
+});
+
+test('recording again retains both clips and Proceed combines their transcripts in recording order', async () => {
+  const state = flow({ clipTexts: ['First clip history', 'Second clip history'] });
+  const stop = () => findNodes(state.render(), (node) => node.props?.accessibilityLabel === 'Stop recording')[0].props.onPress();
+  await stop();
+  const footer = () => findNodes(state.render(), (node) => node.type === 'Screen')[0].props.footerUnScrollable();
+  await findNodes(footer(), (node) => node.props?.accessibilityLabel === 'Record another clip')[0].props.onPress();
+  await stop();
+  assert.equal(findNodes(footer(), (node) => node.type === 'Player').length, 2);
+  await state.button().props.onPress();
+  assert.equal(state.uploads.length, 2);
+  assert.equal(state.routes[0].params.data.transcription, 'First clip history\n\nSecond clip history');
+});
+
+test('deleting a clip excludes it from the combined transcription', async () => {
+  const state = flow();
+  const stop = () => findNodes(state.render(), (node) => node.props?.accessibilityLabel === 'Stop recording')[0].props.onPress();
+  await stop();
+  const footer = () => findNodes(state.render(), (node) => node.type === 'Screen')[0].props.footerUnScrollable();
+  await findNodes(footer(), (node) => node.props?.accessibilityLabel === 'Record another clip')[0].props.onPress();
+  await stop();
+  findNodes(footer(), (node) => node.props?.accessibilityLabel === 'Delete clip 1')[0].props.onPress();
+  await state.button().props.onPress();
+  assert.equal(state.uploads.length, 1);
 });

@@ -1,4 +1,4 @@
-﻿import { CustomButton, ScreenWrapper } from "@components";
+import { CustomButton, ScreenWrapper } from "@components";
 import { Ionicons } from "@expo/vector-icons";
 import { faildMessage } from "@lib";
 import { generateChat, uploadVoiceFile } from "api/voice";
@@ -14,9 +14,9 @@ type Clip = { id: number; uri: string; duration: number; transcript?: string };
 
 export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Voice">) {
   const { height, width } = useWindowDimensions();
-  const heroSize = Math.min(220, width * 0.57, height * 0.25);
   const patient = route.params?.patient || {};
   const [clips, setClips] = React.useState<Clip[]>([]);
+  const heroSize = Math.min(clips.length ? 160 : 220, width * 0.57, height * (clips.length ? 0.19 : 0.25));
   const clipId = React.useRef(0);
   const [loading, setLoading] = React.useState(false);
   const [loadingAction, setLoadingAction] = React.useState<"proceed" | "sample" | null>(null);
@@ -109,7 +109,7 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
         {!isRecording && <Pressable accessibilityRole="button" accessibilityLabel="Record another clip" disabled={loading || isBusy}
           onPress={toggleRecording} style={styles.recordAgain}><Ionicons name="add" size={17} color="#D9F6FF" /><Text style={styles.recordAgainText}>Record again</Text></Pressable>}
       </View>
-      <ScrollView style={{ maxHeight: Math.min(185, height * 0.22) }} showsVerticalScrollIndicator={false}>
+      <ScrollView style={{ maxHeight: isRecording ? 70 : Math.min(185, height * 0.22) }} showsVerticalScrollIndicator={false}>
         {clips.map((clip, index) => <View key={clip.id} style={styles.clipCard}>
           <View style={styles.clipHeading}><Text style={styles.clipTitle}>Clip {index + 1} · {formatTime(clip.duration)}</Text>
             <Pressable accessibilityRole="button" accessibilityLabel={`Delete clip ${index + 1}`} disabled={loading || isBusy || isRecording}
@@ -117,14 +117,14 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
               <Ionicons name="trash-outline" size={18} color="#47739E" />
             </Pressable>
           </View>
-          {!isRecording && !loading && <PlayRecordedAudio uri={clip.uri} />}
+          {!isRecording && !isBusy && !loading && <PlayRecordedAudio uri={clip.uri} />}
         </View>)}
       </ScrollView>
-      <View style={styles.actions}><CustomButton title="Proceed" onPress={handleProceed} disabled={loading || isBusy || isRecording}
+      {!isRecording && <View style={styles.actions}><CustomButton title="Proceed" onPress={handleProceed} disabled={loading || isBusy}
         style={styles.proceed} textStyle={styles.proceedText} />
         {__DEV__ && <CustomButton title="Load Sample" onPress={handleSampleload} isLoading={loading && loadingAction === "sample"}
           disabled={loading || isRecording} style={styles.sample} />}
-      </View>
+      </View>}
     </View> : null}>
     <View style={styles.main}>
       <Text style={styles.title}>{title}</Text>
