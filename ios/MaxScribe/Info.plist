@@ -19,7 +19,7 @@
 	<key>CFBundlePackageType</key>
 	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0.0</string>
+	<string>1.0.1</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleURLTypes</key>
@@ -27,13 +27,15 @@
 		<dict>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>MaxScribe</string>
+				<string>maxscribe</string>
 				<string>com.maxremind.MaxScribeAI</string>
 			</array>
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>22</string>
+	<string>1</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSMinimumSystemVersion</key>
 	<string>12.0</string>
 	<key>LSRequiresIPhoneOS</key>
@@ -45,16 +47,31 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
-	<key>NSCameraUsageDescription</key>
-	<string>This app does not use the camera, but a dependency may reference it.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Allow $(PRODUCT_NAME) to use Face ID.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Allow $(PRODUCT_NAME) to use the microphone.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>This app does not access the photo library, but a dependency may reference it.</string>
-	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Allow $(PRODUCT_NAME) to use speech recognition.</string>
+	<string>Allow $(PRODUCT_NAME) to record patient visit audio.</string>
+	<key>RCTMetroPort</key>
+	<string>$(RCT_METRO_PORT)</string>
+	<key>RCTNewArchEnabled</key>
+	<true/>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneConfigurationName</key>
+					<string>Default Configuration</string>
+					<key>UISceneDelegateClassName</key>
+					<string>EXExpoAppSceneDelegate</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
 	<key>UILaunchStoryboardName</key>
 	<string>SplashScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>

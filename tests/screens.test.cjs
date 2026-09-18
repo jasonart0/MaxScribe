@@ -8,6 +8,7 @@ function screen(name, options = {}) {
   const messages = []; const requests = []; const routes = [];
   const mocks = {
     react: harness.react, 'react-native': fakeNative,
+    'react-native-safe-area-context': { SafeAreaProvider: 'SafeAreaProvider' },
     '@components': { ScreenWrapper: 'Screen', CustomButton: 'Button' },
     '@expo/vector-icons': { Ionicons: 'Icon' },
     '@lib': { ...helpers, isNotEmpty: (value) => value != null && value !== '', setHeight: (value) => value, setWidth: (value) => value, faildMessage: (value) => messages.push(['error', value]), successMessage: (value) => messages.push(['success', value]) },
