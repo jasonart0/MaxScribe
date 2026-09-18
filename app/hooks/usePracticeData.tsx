@@ -2,6 +2,7 @@ import { fetchPracticeLookups } from "api/practice";
 import { apiErrorMessage } from "api/response";
 import { useEffect, useState } from "react";
 import type { DropdownItem } from "components/CustomDropDown";
+import type { PracticeLookups } from "lib/preload";
 
 type Lookup = Record<string, any>;
 type PracticeData = { posList: DropdownItem[]; providerList: DropdownItem[]; locationList: DropdownItem[]; loading: boolean; error: string | null };
@@ -10,10 +11,13 @@ export const mapApiDataToDropdown = (pos: Lookup[], locations: Lookup[], provide
   locationList: locations.map((item) => ({ label: [item.name, item.city, item.state].filter(Boolean).join(" ") || String(item.id), value: item })),
   providerList: providers.map((item) => ({ label: item.name || item.full_name || [item.first_name, item.last_name].filter(Boolean).join(" ") || String(item.id), value: item })),
 });
-export const usePracticeData = () => {
+export const usePracticeData = (initial?: PracticeLookups) => {
   const [attempt, setAttempt] = useState(0);
-  const [data, setData] = useState<PracticeData>({ posList: [], providerList: [], locationList: [], loading: true, error: null });
+  const [data, setData] = useState<PracticeData>(() => initial
+    ? { ...mapApiDataToDropdown(initial.pos, initial.locations, initial.providers), loading: false, error: null }
+    : { posList: [], providerList: [], locationList: [], loading: true, error: null });
   useEffect(() => {
+    if (initial && attempt === 0) return;
     let cancelled = false;
     const load = async () => {
       try {
@@ -25,7 +29,7 @@ export const usePracticeData = () => {
     };
     void load();
     return () => { cancelled = true; };
-  }, [attempt]);
+  }, [attempt, initial]);
   const retry = () => {
     setData((previous) => ({ ...previous, loading: true, error: null }));
     setAttempt((previous) => previous + 1);

@@ -2,12 +2,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { faildMessage, isNotEmpty, successMessage } from "@lib";
 import { loginUser } from "api/auth";
 import AppBackground from "components/AppBackground";
+import LoadingOverlay from "components/LoadingOverlay";
 import { COLORS } from "constants/Colors";
 import { getUserData } from "lib/authdata";
+import { preloadHome } from "lib/preload";
 import { clearSavedLogin, getSavedLogin, saveLoginCredentials, supportsSavedPassword } from "lib/savedLogin";
 import React, { useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
     Alert,
     Image,
     KeyboardAvoidingView,
@@ -36,6 +37,7 @@ export default function LoginScreen({ navigation }: any) {
   const [passwordError, setPasswordError] = useState(false);
   const [savePassword, setSavePassword] = useState(false);
   const editedRef = useRef(false);
+  const loginRef = useRef(false);
 
   useEffect(() => {
     let mounted = true;
@@ -63,7 +65,7 @@ export default function LoginScreen({ navigation }: any) {
   };
 
   const handleLogin = async () => {
-    if (isLoading) return;
+    if (loginRef.current) return;
     const missingEmail = !isNotEmpty(email);
     const missingPassword = !isNotEmpty(password);
     setEmailError(missingEmail);
@@ -74,6 +76,7 @@ export default function LoginScreen({ navigation }: any) {
       return;
     }
 
+    loginRef.current = true;
     setIsLoading(true);
     try {
       const result = await loginUser(email.trim(), password);
@@ -90,12 +93,14 @@ export default function LoginScreen({ navigation }: any) {
       } catch { saved = false; }
       if (saved) successMessage("Login Successful", browserDeclined ? "Use your browser's password manager to save your password." : "");
       else faildMessage("Signed in, but the saved password setting could not be updated.");
-      navigation.replace("Home");
+      const prepared = await preloadHome();
+      navigation.replace("Home", prepared);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Unable to log in right now.";
       faildMessage(message);
     } finally {
+      loginRef.current = false;
       setIsLoading(false);
     }
   };
@@ -223,6 +228,7 @@ export default function LoginScreen({ navigation }: any) {
                 <Pressable
                   accessibilityRole="button"
                   disabled={isLoading}
+                  accessibilityState={{ busy: isLoading, disabled: isLoading }}
                   onPress={handleLogin}
                   style={({ pressed }) => [
                     styles.signInButton,
@@ -230,11 +236,8 @@ export default function LoginScreen({ navigation }: any) {
                     pressed && styles.signInPressed,
                   ]}
                 >
-                  {isLoading ? (
-                    <ActivityIndicator color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.signInText}>Sign In</Text>
-                  )}
+                  <Text style={styles.signInText}>Sign In</Text>
+                  {isLoading && <LoadingOverlay backgroundColor={PRIMARY} color="#FFFFFF" />}
                 </Pressable>
               </View>
             </View>
@@ -324,6 +327,7 @@ const styles = StyleSheet.create({
     outlineStyle: "none",
   } as any,
   signInButton: {
+    overflow: "hidden",
     height: 48,
     marginTop: 16,
     borderRadius: 8,

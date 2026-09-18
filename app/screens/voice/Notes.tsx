@@ -4,6 +4,7 @@ import {
     faildMessage,
     isNotEmpty,
     sectionConfig,
+    sectionPreviewText,
     sectionsToApiResponse,
     setHeight,
     setWidth,
@@ -18,6 +19,7 @@ import CollapsibleSection from "components/Section";
 import { COLORS } from "constants/Colors";
 import useVoice from "hooks/useVoice";
 import { getUserData } from "lib/authdata";
+import { preloadEncounter } from "lib/preload";
 import React, { useEffect, useRef, useState } from "react";
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -33,6 +35,25 @@ export default function Notes({ route, navigation }: ScreenProps<"Notes">) {
   const [openEditModal, setOpenEditModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
+  const [preparing, setPreparing] = useState(false);
+  const preparingRef = useRef(false);
+
+  const openEncounter = async () => {
+    if (preparingRef.current) return;
+    preparingRef.current = true;
+    setPreparing(true);
+    try {
+      const practiceLookups = await preloadEncounter();
+      if (navigation.isFocused?.() === false) return;
+      const updatedApiResponse = sectionsToApiResponse(sections, jsonData);
+      navigation.navigate("AddEncounter", { patient, jsonData: updatedApiResponse, practiceLookups });
+    } catch (error) {
+      faildMessage(apiErrorMessage(error, "Unable to load encounter options. Please try again."));
+    } finally {
+      preparingRef.current = false;
+      setPreparing(false);
+    }
+  };
 
   const updateSectionData = (title: string, newData: any) => {
     setSections((prevSections) =>
@@ -99,32 +120,7 @@ export default function Notes({ route, navigation }: ScreenProps<"Notes">) {
   };
 
   const renderGeneratedSection = (section: any) => {
-    const rawData = section?.data;
-    const displayText = (() => {
-      if (typeof rawData === "string") return rawData.replace(/<\/?[a-z][\s\S]*>/gi, "").trim();
-      if (Array.isArray(rawData)) {
-        return rawData
-          .map((item) => {
-            if (typeof item === "string") return item.replace(/<\/?[a-z][\s\S]*>/gi, "").trim();
-            if (item && typeof item === "object") {
-              return Object.entries(item)
-                .filter(([key, value]) => !section.notShow?.includes(key) && isNotEmpty(value))
-                .map(([, value]) => (typeof value === "object" ? JSON.stringify(value) : String(value)))
-                .join("\n");
-            }
-            return "";
-          })
-          .filter(Boolean)
-          .join("\n\n");
-      }
-      if (rawData && typeof rawData === "object") {
-        return Object.entries(rawData)
-          .filter(([key, value]) => !section.notShow?.includes(key) && isNotEmpty(value))
-          .map(([, value]) => (typeof value === "object" ? JSON.stringify(value) : String(value)))
-          .join("\n");
-      }
-      return "";
-    })();
+    const displayText = sectionPreviewText(section.data, section.notShow);
 
     return (
       <TouchableOpacity
@@ -189,16 +185,8 @@ export default function Notes({ route, navigation }: ScreenProps<"Notes">) {
             <View style={{ alignItems: "center" }}>
               <CustomButton
                 title={"Send to Maximus"}
-                onPress={() => {
-                  const updatedApiResponse = sectionsToApiResponse(
-                    sections,
-                    jsonData
-                  );
-                  navigation.navigate("AddEncounter", {
-                    patient,
-                    jsonData: updatedApiResponse,
-                  });
-                }}
+                onPress={openEncounter}
+                isLoading={preparing}
                 style={styles.procedBtn}
               />
             </View>

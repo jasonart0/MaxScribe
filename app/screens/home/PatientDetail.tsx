@@ -8,9 +8,10 @@ import AvatarInitials from "components/Avatar";
 import { baseURL } from "constants/base";
 import { COLORS } from "constants/Colors";
 import { usePatientImage } from "hooks/usePatientImage";
+import { extractEncounters } from "lib/preload";
+import { getPatientAge } from "lib/patientAge";
 import React, { useCallback, useRef, useState } from "react";
 import {
-    ActivityIndicator,
     FlatList,
     Pressable,
     StatusBar,
@@ -32,43 +33,6 @@ type Visit = {
   appointment_type?: string;
   [key: string]: unknown;
 };
-
-function calculateAge(dob?: string) {
-  if (!dob) return "--";
-  const birthDate = new Date(dob);
-  if (Number.isNaN(birthDate.getTime())) return "--";
-
-  const today = new Date();
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const monthDifference = today.getMonth() - birthDate.getMonth();
-  if (
-    monthDifference < 0 ||
-    (monthDifference === 0 && today.getDate() < birthDate.getDate())
-  ) {
-    age -= 1;
-  }
-  return Math.max(0, age);
-}
-
-function extractEncounters(response: any): Visit[] {
-  if (Array.isArray(response)) return response;
-  if (!response || typeof response !== "object") return [];
-
-  const candidates = [
-    response.data,
-    response.records,
-    response.encounters,
-    response.results,
-    response.data?.records,
-    response.data?.encounters,
-    response.data?.results,
-    response.data?.data,
-    response.data?.data?.records,
-    response.data?.data?.encounters,
-  ];
-
-  return candidates.find(Array.isArray) || [];
-}
 
 function formatVisitDate(value?: string) {
   if (!value) return { day: "--", month: "" };
@@ -106,29 +70,36 @@ const getStatusStyle = (status?: string) => {
 
 export default function PatientDetailsScreen({ route, navigation }: any) {
   const patient = route?.params?.patient || route?.params || {};
-  const [visits, setVisits] = useState<Visit[]>([]);
+  const [visits, setVisits] = useState<Visit[]>(route?.params?.initialVisits ?? []);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [historyError, setHistoryError] = useState(false);
   const [historyAttempt, setHistoryAttempt] = useState(0);
-  const historyRequestRef = useRef(false);
+  const preparedRef = useRef(route?.params?.initialVisits !== undefined);
 
   useFocusEffect(useCallback(() => {
     if (!patient?.patient_id) return;
     let cancelled = false;
+    if (preparedRef.current) {
+      preparedRef.current = false;
+      return;
+    }
 
     const loadHistory = async () => {
-      if (historyRequestRef.current) return;
-      historyRequestRef.current = true;
       setLoading(true);
-      setHistoryError(false);
       try {
         const response = await fetchPatientHistory(patient.patient_id);
-        if (!cancelled) setVisits(extractEncounters(response));
+        if (!cancelled) {
+          setVisits(extractEncounters(response));
+          setHistoryError(false);
+        }
       } catch {
         if (!cancelled) setHistoryError(true);
       } finally {
-        if (!cancelled) setLoading(false);
-        historyRequestRef.current = false;
+        if (!cancelled) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     };
 
@@ -146,7 +117,7 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
       : null;
   const imageUri = usePatientImage(patient.patient_id, fallbackImageUri);
   const statusStyle = getStatusStyle(patient.patient_status);
-  const age = patient.age ?? calculateAge(patient.dob);
+  const age = getPatientAge(patient);
   const genderCode = patient.gender_code?.toUpperCase();
   const gender = patient.gender || patient.sex || (genderCode === "M" ? "Male" : genderCode === "F" ? "Female" : "Patient");
   const openVisit = (item: Visit) => {
@@ -230,29 +201,24 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
                 </View>
               </View>
               <Text style={styles.historyTitle}>Visit history</Text>
+              {historyError && !!visits.length && <Text accessibilityRole="alert" style={styles.emptyText}>Unable to load encounters. Please try again.</Text>}
+              {historyError && <CustomButton title="Retry" variant="secondary" isLoading={loading && !refreshing}
+                onPress={() => { setRefreshing(false); setHistoryAttempt((attempt) => attempt + 1); }} />}
             </>
           }
           ListEmptyComponent={
-            loading ? (
-              <ActivityIndicator color={COLORS.primary} size="large" style={styles.loader} />
-            ) : (
+            loading ? null : (
               <View style={styles.emptyState}>
                 <Ionicons name="document-text-outline" size={32} color="#7EA5DA" />
                 <Text style={styles.emptyText}>
                   {historyError ? "Unable to load encounters. Please try again." : "No encounters available"}
                 </Text>
-                {historyError && (
-                  <Pressable accessibilityRole="button" onPress={() => setHistoryAttempt((attempt) => attempt + 1)}
-                    style={styles.retryButton}>
-                    <Text style={styles.retryText}>Retry</Text>
-                  </Pressable>
-                )}
               </View>
             )
           }
           renderItem={renderVisit}
-          refreshing={loading}
-          onRefresh={() => setHistoryAttempt((attempt) => attempt + 1)}
+          refreshing={refreshing}
+          onRefresh={() => { setRefreshing(true); setHistoryAttempt((attempt) => attempt + 1); }}
           showsVerticalScrollIndicator={false}
         />
         <View style={styles.recordingFooter}>

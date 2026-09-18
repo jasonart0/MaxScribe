@@ -7,11 +7,13 @@ import {
     TextInputProps,
     View,
 } from "react-native";
+import LoadingOverlay from "./LoadingOverlay";
 
 type CustomSearchBarProps = Pick<TextInputProps, "value" | "onChangeText"> & {
   placeholder?: string;
   onPressAction: () => void;
   onPressSearch: () => void;
+  isLoading?: boolean;
 };
 
 const CustomSearchBar = ({
@@ -20,10 +22,16 @@ const CustomSearchBar = ({
   onChangeText,
   onPressAction,
   onPressSearch,
+  isLoading = false,
 }: CustomSearchBarProps) => {
   return (
     <View style={styles.container}>
-      <Ionicons name="search-outline" size={22} color="#5874B7" />
+      <Pressable accessibilityRole="button" accessibilityLabel="Search patients"
+        accessibilityState={{ busy: isLoading, disabled: isLoading }} disabled={isLoading}
+        onPress={onPressSearch} style={{ minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" }}>
+        <Ionicons name="search-outline" size={22} color="#5874B7" />
+        {isLoading && <LoadingOverlay backgroundColor="#FFFFFF" color="#5874B7" />}
+      </Pressable>
       <TextInput
         placeholder={placeholder}
         value={value}

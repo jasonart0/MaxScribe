@@ -3,6 +3,19 @@ const assert = require('node:assert/strict');
 const { loadApp } = require('./load-app.cjs');
 const helpers = () => loadApp('app/lib/helper.tsx', { './utils': { isNotEmpty: (value) => value != null && value !== '' && !(typeof value === 'object' && Object.keys(value).length === 0) } });
 
+test('note previews preserve HTML text, paragraphs and encoded characters', () => {
+  const { sectionPreviewText } = helpers();
+  assert.equal(sectionPreviewText('<p>Patient has <strong>pain</strong> &amp; nausea.</p><p>Follow up<br/>tomorrow &#39;morning&#39;.</p>'), "Patient has pain & nausea.\nFollow up\ntomorrow 'morning'.");
+  assert.equal(sectionPreviewText('<p><br></p><p>&nbsp;</p>'), '');
+  assert.equal(sectionPreviewText('BP < 120 and > 80'), 'BP < 120 and > 80');
+});
+
+test('note previews handle nested structured content and omit hidden codes', () => {
+  const { sectionPreviewText } = helpers();
+  assert.equal(sectionPreviewText([{ description: '<p>Headache</p>', details: { text: '<b>Improving</b>', code: 'hidden' }, dose: 0, active: false }], ['code']), 'Headache\nImproving\n0\nfalse');
+  assert.equal(sectionPreviewText({ code: 'hidden', description: null, details: [] }, ['code']), '');
+});
+
 test('clinical editing preserves hidden codes and unknown backend fields', () => {
   const { sectionsToApiResponse } = helpers();
   const previous = { allergies: [{ description: 'Before', snomed_ct: '123', extra: 'keep' }], session_id: 'keep-session' };

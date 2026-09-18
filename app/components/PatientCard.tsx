@@ -2,14 +2,17 @@ import { Ionicons } from "@expo/vector-icons";
 import { baseURL } from "constants/base";
 import { COLORS } from "constants/Colors";
 import { usePatientImage } from "hooks/usePatientImage";
+import { getPatientAge } from "lib/patientAge";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import AvatarInitials from "./Avatar";
+import LoadingOverlay from "./LoadingOverlay";
 
 type Patient = {
   name?: string;
   patient_status?: string;
   dob?: string;
+  age?: number | string | null;
   pic?: string;
   cell_phone?: string;
   home_phone?: string;
@@ -21,6 +24,8 @@ type PatientCardProps = {
   patient: Patient;
   onViewPress: () => void;
   onCallPress: () => void;
+  isLoading?: boolean;
+  disabled?: boolean;
 };
 
 const getStatusStyle = (status?: string) => {
@@ -45,7 +50,7 @@ const getStatusStyle = (status?: string) => {
   return { pill: styles.statusPillInfo, text: styles.statusTextInfo };
 };
 
-export default function PatientCard({ patient, onViewPress, onCallPress }: PatientCardProps) {
+export default function PatientCard({ patient, onViewPress, onCallPress, isLoading = false, disabled = false }: PatientCardProps) {
   const fallbackImageUri = patient.pic
     ? patient.pic.startsWith("http") ? patient.pic : `${baseURL}/${patient.pic.replace(/^\//, "")}`
     : null;
@@ -55,7 +60,8 @@ export default function PatientCard({ patient, onViewPress, onCallPress }: Patie
   return (
     <View style={styles.card}>
       <Pressable accessibilityRole="button" accessibilityLabel={`View ${patient.name || "patient"}`}
-        onPress={onViewPress} style={({ pressed }) => pressed && styles.pressed}>
+        accessibilityState={{ busy: isLoading, disabled }} disabled={disabled}
+        onPress={onViewPress} style={({ pressed }) => [styles.viewButton, pressed && styles.pressed]}>
       <View style={styles.topRow}>
         {imageUri ? (
           <AvatarInitials imageUri={imageUri} name={patient.name} size={46} />
@@ -70,6 +76,7 @@ export default function PatientCard({ patient, onViewPress, onCallPress }: Patie
             </View>
           </View>
           <Text style={styles.dob}>DOB: {patient.dob || "--"}</Text>
+          <Text style={styles.dob}>Age: {getPatientAge(patient)} yrs</Text>
         </View>
       </View>
       <View style={styles.footer}>
@@ -86,8 +93,10 @@ export default function PatientCard({ patient, onViewPress, onCallPress }: Patie
           </Text>
         </View>
       </View>
+      {isLoading && <LoadingOverlay backgroundColor={COLORS.card} color={COLORS.primary} />}
       </Pressable>
       <Pressable accessibilityRole="button" accessibilityLabel="Record patient session"
+        disabled={disabled}
         hitSlop={8} onPress={onCallPress}
         style={({ pressed }) => [styles.micButton, pressed && styles.pressed]}>
         <Ionicons name="mic-outline" size={27} color="#3777FA" />
@@ -97,6 +106,7 @@ export default function PatientCard({ patient, onViewPress, onCallPress }: Patie
 }
 
 const styles = StyleSheet.create({
+  viewButton: { overflow: "hidden", borderRadius: 8 },
   card: { paddingHorizontal: 12, paddingTop: 10, borderRadius: 8, backgroundColor: COLORS.card,
     borderWidth: 1, borderColor: COLORS.border },
   topRow: { flexDirection: "row", alignItems: "center" },

@@ -1,7 +1,6 @@
 import { CustomButton, ScreenWrapper } from "@components";
 import { faildMessage, setHeight, setWidth } from "@lib";
 import { generateAINotes } from "api/voice";
-import AIProcessingLoader from "components/AnimationLoad";
 import { COLORS } from "constants/Colors";
 import React from "react";
 import { FlatList, StyleSheet, Text, View } from "react-native";
@@ -17,6 +16,7 @@ export default function Transcript({ route, navigation }: ScreenProps<"Transcrip
     try {
       setLoading(true);
       const noteData = await generateAINotes(transcription, patient?.patient_id);
+      if (navigation.isFocused?.() === false) return;
         navigation.navigate("Notes", {
           data: {
             patient: patient,
@@ -60,7 +60,6 @@ export default function Transcript({ route, navigation }: ScreenProps<"Transcrip
       )}
     >
       {/* Back Button */}
-      {loading && <AIProcessingLoader visible={loading} />}
       <FlatList
         data={showChat}
         renderItem={renderItem}

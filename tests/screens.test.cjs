@@ -19,11 +19,19 @@ function screen(name, options = {}) {
     'hooks/usePracticeData': { usePracticeData: () => ({ posList: [], providerList: [], locationList: [], loading: false, error: null }) },
     'hooks/useVoice': () => ({ started: false, processing: false, error: null, results: '', finalResult: '', _destroyRecognizer: async () => {} }),
     'lib/authdata': { getUserData: async () => ({ username: 'test-doctor', practice_id: 7 }) },
+    'lib/preload': {
+      preloadHome: async () => ({ initialPatients: [], initialError: null }),
+      preloadEncounter: options.preloadEncounter || (async () => ({ pos: [], locations: [], providers: [] })),
+    },
     './axiosInstance': { post: async (url, body) => { requests.push({ url, body }); if (options.failure) throw new Error('backend failure'); return { data: { success: true } }; } },
   };
   const Component = loadApp('app/screens/voice/' + name + '.tsx', mocks).default;
   const patient = { patient_id: 1, name: 'Test Patient' };
   const props = { route: { params: name === 'Notes' ? { data: { patient, jsonData: { hpi: 'Test history' }, aData: options.noEncounter ? undefined : { id: 1, provider_id: '2', location_id: '3', pos_id: '4', date_created: '2026-09-01T00:00:00.000Z' } } } : { patient, jsonData: { hpi: 'Test history' } } }, navigation: { goBack: () => routes.push('back'), reset: (value) => routes.push(value) } };
+  if (name === 'Notes' && options.generatedNote) {
+    props.route.params.data = { patient, transcription: 'Test transcript', jsonData: options.generatedNote };
+  }
+  props.navigation.navigate = (name, params) => routes.push({ name, params });
   return { render: () => harness.render(() => Component(props)), messages, requests, routes };
 }
 
@@ -101,4 +109,46 @@ test('structured note fields are editable and preserve hidden codes', () => {
   input.props.onChangeText('After');
   assert.deepEqual(changed, [{ description: 'After', snomed_ct: '123' }]);
   assert.equal(data[0].description, 'Before');
+});
+
+test('generated note preview displays rich text and updates after saving an edit', () => {
+  const state = screen('Notes', { generatedNote: { hpi: '<p>Initial <strong>history</strong></p>' } });
+  let tree = state.render();
+  const textValues = (value) => findNodes(value, (node) => node.type === 'Text').flatMap((node) => node.props.children);
+  assert.ok(textValues(tree).includes('Initial history'));
+  assert.ok(!textValues(tree).includes('No content'));
+  findNodes(tree, (node) => node.type === 'TouchableOpacity')[0].props.onPress();
+  tree = state.render();
+  assert.equal(findNodes(tree, (node) => node.type === 'RichEditor')[0].props.htmlContent, '<p>Initial <strong>history</strong></p>');
+  findNodes(tree, (node) => node.type === 'RichEditor')[0].props.setHtmlContent('<p>Updated history</p>');
+  tree = state.render();
+  const editWrapper = findNodes(tree, (node) => node.type === 'Screen')[1];
+  findNodes(editWrapper.props.footerUnScrollable(), (node) => node.type === 'Button')[0].props.onPress();
+  assert.ok(textValues(state.render()).includes('Updated history'));
+});
+
+test('Send to Maximus prepares encounter options before navigating and prevents double taps', async () => {
+  let finish; let requests = 0;
+  const pending = new Promise((resolve) => { finish = resolve; });
+  const state = screen('Notes', { generatedNote: { hpi: 'Ready note' }, preloadEncounter: () => { requests++; return pending; } });
+  const button = footerButton(state.render());
+  const action = button.props.onPress();
+  await button.props.onPress();
+  assert.equal(requests, 1);
+  assert.equal(state.routes.length, 0);
+  assert.equal(footerButton(state.render()).props.isLoading, true);
+  const lookups = { pos: [{ id: 1 }], locations: [{ id: 2 }], providers: [{ id: 3 }] };
+  finish(lookups);
+  await action;
+  assert.equal(state.routes[0].name, 'AddEncounter');
+  assert.deepEqual(state.routes[0].params.practiceLookups, lookups);
+  assert.equal(state.routes[0].params.jsonData.hpi, 'Ready note');
+});
+
+test('failed encounter preparation keeps the note visible and allows retry', async () => {
+  const state = screen('Notes', { generatedNote: { hpi: 'Ready note' }, preloadEncounter: async () => { throw new Error('Offline'); } });
+  await footerButton(state.render()).props.onPress();
+  assert.equal(state.routes.length, 0);
+  assert.equal(footerButton(state.render()).props.isLoading, false);
+  assert.equal(state.messages[0][0], 'error');
 });

@@ -1,15 +1,15 @@
-import { ScreenWrapper } from "@components";
+import { CustomButton, ScreenWrapper } from "@components";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { fetchPatients, fetchPatientsbySearch } from "api/patients";
 import { apiErrorMessage } from "api/response";
 import { COLORS } from "constants/Colors";
 import { useDebounce } from "hooks/useDebounce";
+import { preloadPatientHistory } from "lib/preload";
+import { faildMessage } from "@lib";
 import React, { useCallback, useRef, useState } from "react";
 import {
-    ActivityIndicator,
     FlatList,
-    Pressable,
     StyleSheet,
     Text,
     View,
@@ -31,35 +31,34 @@ type Patient = {
   [key: string]: unknown;
 };
 
-export default function HomeScreen({ navigation }: any) {
+export default function HomeScreen({ navigation, route }: any) {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadingTarget, setLoadingTarget] = useState<"search" | "retry" | "refresh">("search");
+  const [patients, setPatients] = useState<Patient[]>(route?.params?.initialPatients ?? []);
+  const [loadError, setLoadError] = useState<string | null>(route?.params?.initialError ?? null);
+  const [openingPatient, setOpeningPatient] = useState<string | number | null>(null);
+  const openingRef = useRef(false);
+  const preparedRef = useRef(route?.params?.initialPatients !== undefined);
   const requestId = useRef(0);
-  const loadingRef = useRef(false);
   const debouncedSearch = useDebounce(search.trim(), 500);
 
-  const loadPatients = useCallback(async (query: string, isRefresh = false) => {
-    if (loadingRef.current && !isRefresh) return;
-
+  const loadPatients = useCallback(async (query: string, target: "search" | "retry" | "refresh" = "search") => {
     const currentRequest = ++requestId.current;
-    loadingRef.current = true;
-    setLoadError(null);
-    if (isRefresh) {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
-    }
+    setLoading(true);
+    setLoadingTarget(target);
+    setRefreshing(target === "refresh");
     try {
       const data = query
         ? await fetchPatientsbySearch(query)
         : await fetchPatients();
-      if (currentRequest === requestId.current) setPatients(Array.isArray(data) ? data : []);
+      if (currentRequest === requestId.current) {
+        setPatients(Array.isArray(data) ? data : []);
+        setLoadError(null);
+      }
     } catch (error) {
       if (currentRequest === requestId.current) {
-        setPatients([]);
         setLoadError(apiErrorMessage(error, "Unable to load patients. Please try again."));
       }
     } finally {
@@ -67,14 +66,30 @@ export default function HomeScreen({ navigation }: any) {
         setLoading(false);
         setRefreshing(false);
       }
-      loadingRef.current = false;
     }
   }, []);
 
   useFocusEffect(useCallback(() => {
-    void loadPatients(debouncedSearch);
+    if (preparedRef.current && !debouncedSearch) preparedRef.current = false;
+    else void loadPatients(debouncedSearch);
     return () => { requestId.current += 1; };
   }, [debouncedSearch, loadPatients]));
+
+  const openPatient = async (patient: Patient) => {
+    if (openingRef.current || patient.patient_id == null) return;
+    openingRef.current = true;
+    setOpeningPatient(patient.patient_id);
+    try {
+      const initialVisits = await preloadPatientHistory(patient.patient_id);
+      if (navigation.isFocused?.() === false) return;
+      navigation.navigate("PatientDetails", { patient, initialVisits });
+    } catch (error) {
+      faildMessage(apiErrorMessage(error, "Unable to load patient history. Please try again."));
+    } finally {
+      openingRef.current = false;
+      setOpeningPatient(null);
+    }
+  };
 
   return (
     <ScreenWrapper
@@ -90,6 +105,7 @@ export default function HomeScreen({ navigation }: any) {
           onChangeText={setSearch}
           onPressSearch={() => loadPatients(search.trim())}
           onPressAction={() => setSearch("")}
+          isLoading={loading && loadingTarget === "search"}
         />
 
         <FlatList
@@ -100,20 +116,16 @@ export default function HomeScreen({ navigation }: any) {
           }
           showsVerticalScrollIndicator={false}
           refreshing={refreshing}
-          onRefresh={() => loadPatients(debouncedSearch, true)}
+          onRefresh={() => loadPatients(debouncedSearch, "refresh")}
           contentContainerStyle={[
             styles.listContent,
             !patients.length && styles.emptyListContent,
           ]}
-          ListHeaderComponent={
-            loading ? (
-              <ActivityIndicator
-                color={ACCENT}
-                size="large"
-                style={styles.loader}
-              />
-            ) : null
-          }
+          ListHeaderComponent={<View>
+            {!!loadError && !!patients.length && <Text accessibilityRole="alert" style={styles.emptyCopy}>{loadError}</Text>}
+            {!!loadError && <CustomButton title="Retry" variant="secondary"
+              isLoading={loading && loadingTarget === "retry"} onPress={() => loadPatients(search.trim(), "retry")} />}
+          </View>}
           ListEmptyComponent={
             !loading ? (
               <View style={styles.emptyState}>
@@ -124,18 +136,16 @@ export default function HomeScreen({ navigation }: any) {
                 <Text style={styles.emptyCopy}>
                   {loadError || "Try another name, ID, or patient status."}
                 </Text>
-                {!!loadError && <Pressable accessibilityRole="button" onPress={() => loadPatients(search.trim())}
-                  style={{ minHeight: 44, justifyContent: "center", paddingHorizontal: 16 }}>
-                  <Text style={{ color: COLORS.primary }}>Retry</Text>
-                </Pressable>}
               </View>
             ) : null
           }
           renderItem={({ item }) => (
             <PatientCard
               patient={item}
-              onCallPress={() => navigation.navigate("Voice", { patient: item, autoStart: true })}
-              onViewPress={() => navigation.navigate("PatientDetails", { patient: item })}
+              onCallPress={() => { if (!openingRef.current) navigation.navigate("Voice", { patient: item, autoStart: true }); }}
+              onViewPress={() => openPatient(item)}
+              isLoading={openingPatient === item.patient_id}
+              disabled={openingPatient !== null}
             />
           )}
         />

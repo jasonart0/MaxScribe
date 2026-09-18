@@ -14,10 +14,9 @@ import CustomDropdown, { type DropdownItem } from "components/CustomDropDown";
 import { COLORS } from "constants/Colors";
 import { usePracticeData } from "hooks/usePracticeData";
 import { getUserData } from "lib/authdata";
+import { preloadHome } from "lib/preload";
 import React, { useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Modal,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -26,9 +25,9 @@ import {
 import type { ScreenProps } from "types/navigation";
 
 export default function AddEncounter({ route, navigation }: ScreenProps<"AddEncounter">) {
-  const { patient, jsonData } = route.params || {};
+  const { patient, jsonData, practiceLookups } = route.params || {};
 
-  const { posList, providerList, locationList, loading, error, retry } = usePracticeData();
+  const { posList, providerList, locationList, loading, error, retry } = usePracticeData(practiceLookups);
   useEffect(() => {
     if (!loading && isNotEmpty(error)) {
       faildMessage(error || "Unable to load encounter options.");
@@ -96,9 +95,10 @@ export default function AddEncounter({ route, navigation }: ScreenProps<"AddEnco
       };
       await savePatientScribeData(scribeData);
       successMessage("✅ Synced", "Encounter note synced to EHR system.");
+      const prepared = await preloadHome();
       navigation.reset({
         index: 0,
-        routes: [{ name: "Home" }],
+        routes: [{ name: "Home", params: prepared }],
       });
     } catch (err) {
       faildMessage(apiErrorMessage(err, "Unable to save the encounter. Please try again."));
@@ -123,7 +123,7 @@ export default function AddEncounter({ route, navigation }: ScreenProps<"AddEnco
         <CustomButton
           title={"Save"}
           onPress={handleSave}
-          isLoading={saving}
+          isLoading={saving || loading}
           disabled={loading || !!error}
           style={styles.buttonRow}
         />
@@ -243,16 +243,6 @@ export default function AddEncounter({ route, navigation }: ScreenProps<"AddEnco
         }}
         bottomSheetRef={posSheetRef}
       />
-
-      {/* Loading Modal */}
-      <Modal animationType="fade" transparent={true} visible={loading} onRequestClose={() => {}}>
-        <View style={styles.backdrop}>
-          <View style={styles.loaderBox}>
-            <ActivityIndicator size="large" color={COLORS.primary} />
-            <Text style={styles.text}>Loading</Text>
-          </View>
-        </View>
-      </Modal>
 
       {/* Confirmation Modal */}
       <ConfirmationModal

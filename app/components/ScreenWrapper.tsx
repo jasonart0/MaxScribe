@@ -13,11 +13,12 @@ interface ScreenWrapperProps {
  containerViewStyle?: object; contentContainerStyle?: object;
  headerUnScrollable?: (t: any, s: any) => ReactNode; title?: string; showback?: boolean;
  footerUnScrollable?: () => ReactNode; backgroundColor?: string; imageBackgroundColor?: string;
+ background?: ReactNode;
  barStyle?: StatusBarProps['barStyle']; loading?: boolean; statusBarColor?: string; onTouchEnd?: () => void;
 }
 export default function ScreenWrapper({children, title, showback = true, scrollEnabled = false,
  backgroundImage, containerViewStyle, contentContainerStyle, headerUnScrollable, footerUnScrollable,
- barStyle = 'dark-content', loading = false, statusBarColor = COLORS.background, onTouchEnd}: ScreenWrapperProps) {
+ barStyle = 'dark-content', loading = false, statusBarColor = COLORS.background, onTouchEnd, background}: ScreenWrapperProps) {
  const focused = useIsFocused();
  const footer = footerUnScrollable?.();
  const content = <SafeAreaView style={styles.safe}>
@@ -33,7 +34,8 @@ export default function ScreenWrapper({children, title, showback = true, scrollE
    {footer != null && footer !== false && <View style={styles.footer}>{footer}</View>}
   </View>
  </SafeAreaView>;
- return <AppBackground>{backgroundImage ? <ImageBackground source={backgroundImage} style={styles.body} resizeMode="cover">{content}</ImageBackground> : content}</AppBackground>;
+ const scene = backgroundImage ? <ImageBackground source={backgroundImage} style={styles.body} resizeMode="cover">{content}</ImageBackground> : content;
+ return background ? <View style={styles.body}>{background}{scene}</View> : <AppBackground>{scene}</AppBackground>;
 }
 const styles = StyleSheet.create({
  safe: {flex: 1, backgroundColor: 'transparent'},

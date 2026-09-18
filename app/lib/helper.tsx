@@ -1,5 +1,38 @@
 import { isNotEmpty } from "./utils";
 
+// Build previews from the current section data without removing text inside HTML tags.
+const sectionPreviewText = (data: unknown, excludedKeys: string[] = []): string => {
+  if (typeof data === "string") {
+    const entities: Record<string, string> = {
+      nbsp: " ", amp: "&", lt: "<", gt: ">", quot: '"', apos: "'",
+    };
+    return data
+      .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, "")
+      .replace(/<br\b[^>]*>|<\/(?:p|div|li|h[1-6]|tr)\s*>/gi, "\n")
+      .replace(/<\/?[a-z][^>]*>/gi, "")
+      .replace(/&(#x[\da-f]+|#\d+|nbsp|amp|lt|gt|quot|apos);/gi, (entity, code: string) => {
+        if (!code.startsWith("#")) return entities[code.toLowerCase()] ?? entity;
+        const point = code[1].toLowerCase() === "x" ? parseInt(code.slice(2), 16) : Number(code.slice(1));
+        return point >= 0 && point <= 0x10ffff ? String.fromCodePoint(point) : entity;
+      })
+      .replace(/[\t \u00a0]+/g, " ")
+      .replace(/ *\n */g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  }
+  if (Array.isArray(data)) {
+    return data.map((item) => sectionPreviewText(item, excludedKeys)).filter(Boolean).join("\n\n");
+  }
+  if (data && typeof data === "object") {
+    return Object.entries(data)
+      .filter(([key]) => !excludedKeys.includes(key))
+      .map(([, value]) => sectionPreviewText(value, excludedKeys))
+      .filter(Boolean)
+      .join("\n");
+  }
+  return typeof data === "number" || typeof data === "boolean" ? String(data) : "";
+};
+
 const sectionConfig = (apiResponse: Record<string, any>) => [
   {
     key: "text",
@@ -156,4 +189,4 @@ const sectionsToApiResponse = (
   }, { ...prevApiResponse } as Record<string, any>);
 };
 
-export { sectionConfig, sectionsToApiResponse };
+export { sectionConfig, sectionPreviewText, sectionsToApiResponse };

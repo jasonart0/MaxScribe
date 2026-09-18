@@ -1,7 +1,8 @@
 import { COLORS } from 'constants/Colors';
 import { THEME } from 'constants/Theme';
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
+import LoadingOverlay from './LoadingOverlay';
 
 type Props = { title: string; onPress: () => void; style?: StyleProp<ViewStyle>; textStyle?: StyleProp<TextStyle>; isLoading?: boolean; disabled?: boolean; variant?: 'primary' | 'secondary' };
 
@@ -14,19 +15,18 @@ export default function CustomButton({ title, onPress, style, textStyle, isLoadi
       accessibilityState={{ disabled: disabled || !!isLoading, busy: !!isLoading }}
       disabled={disabled || isLoading}
       onPress={onPress}
-      style={[styles.button, secondary && styles.secondary, style, disabled && { opacity: 0.5 }]}
+      style={[styles.button, secondary && styles.secondary, style, disabled && !isLoading && { opacity: 0.5 }]}
     >
-      {isLoading ? (
-        <ActivityIndicator color={secondary ? COLORS.primary : COLORS.card} />
-      ) : (
-        <Text style={[styles.text, secondary && { color: COLORS.primary }, textStyle]}>{title}</Text>
-      )}
+      <Text style={[styles.text, secondary && { color: COLORS.primary }, textStyle]}>{title}</Text>
+      {isLoading && <LoadingOverlay backgroundColor={secondary ? COLORS.card : COLORS.primary}
+        color={secondary ? COLORS.primary : COLORS.card} />}
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   button: {
+    overflow: 'hidden',
     backgroundColor: COLORS.primary,
     minHeight: 52,
     paddingVertical: THEME.spacing.sm,

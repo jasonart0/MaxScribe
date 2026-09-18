@@ -1,326 +1,187 @@
-import { CustomButton, ScreenWrapper } from "@components";
+﻿import { CustomButton, ScreenWrapper } from "@components";
 import { Ionicons } from "@expo/vector-icons";
-import { faildMessage, setHeight, setWidth } from "@lib";
+import { faildMessage } from "@lib";
 import { generateChat, uploadVoiceFile } from "api/voice";
-import AIProcessingLoader from "components/AnimationLoad";
 import PlayRecordedAudio from "components/AudioPlayer";
-import RecordingWaveform from "components/RecordingWaveform";
-import { COLORS } from "constants/Colors";
+import RecordingMic, { RecordingBackdrop, RecordingWaves } from "components/RecordingVisual";
 import { SAMPLE_NOTE } from "constants/dummyData";
 import { useVoiceRecorder } from "hooks/useAudioRecording";
 import type { ScreenProps } from "types/navigation";
 import * as React from "react";
-import {
-    Pressable,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-    useWindowDimensions,
-} from "react-native";
-function VoiceRecordScreen({ navigation, route }: ScreenProps<"Voice">) {
-  const { height, width } = useWindowDimensions();
-  const heroSize = Math.min(220, width * 0.58, height * 0.24);
-  const patient = route.params?.patient || {};
-  const autoStart = route.params?.autoStart === true;
-  const [loading, setLoading] = React.useState(false);
-  const processingRef = React.useRef(false);
-  const {
-    isRecording,
-    isPaused,
-    isBusy,
-    recordingError,
-    statusMessage,
-    timer,
-    metering,
-    formatTime,
-    startRecording,
-    pauseRecording,
-    resumeRecording,
-    stopRecording,
-  } = useVoiceRecorder();
+import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from "react-native";
 
-  const [recordedUri, setRecordedUri] = React.useState<string | null>(null);
+type Clip = { id: number; uri: string; duration: number; transcript?: string };
+
+export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Voice">) {
+  const { height, width } = useWindowDimensions();
+  const heroSize = Math.min(220, width * 0.57, height * 0.25);
+  const patient = route.params?.patient || {};
+  const [clips, setClips] = React.useState<Clip[]>([]);
+  const clipId = React.useRef(0);
+  const [loading, setLoading] = React.useState(false);
+  const [loadingAction, setLoadingAction] = React.useState<"proceed" | "sample" | null>(null);
+  const [processingStage, setProcessingStage] = React.useState<"transcribing" | "conversation">("transcribing");
+  const [processingClip, setProcessingClip] = React.useState(1);
+  const processingRef = React.useRef(false);
+  const { isRecording, isPaused, isBusy, recordingError, timer, metering, formatTime,
+    startRecording, pauseRecording, resumeRecording, stopRecording } = useVoiceRecorder();
   const autoStartHandled = React.useRef(false);
+  const processing = loading && loadingAction === "proceed";
 
   React.useEffect(() => {
-    if (autoStart && !autoStartHandled.current) {
+    if (route.params?.autoStart && !autoStartHandled.current) {
       autoStartHandled.current = true;
       void startRecording();
     }
-  }, [autoStart, startRecording]);
+  }, [route.params?.autoStart, startRecording]);
 
   const toggleRecording = async () => {
     if (isBusy || loading) return;
     if (isRecording) {
       const uri = await stopRecording();
-      if (uri) setRecordedUri(uri); // store the file
-    } else {
-      setRecordedUri(null); // reset old file
-      await startRecording();
-    }
+      if (uri) {
+        const clip = { id: ++clipId.current, uri, duration: timer };
+        setClips((previous) => [...previous, clip]);
+      }
+    } else { await startRecording(); }
+  };
+
+  const cancelRecording = async () => {
+    if (isBusy || loading) return;
+    if (isRecording) await stopRecording();
+    navigation.goBack();
   };
 
   const handleProceed = async () => {
-    if (!recordedUri || processingRef.current) return;
+    if (!clips.length || processingRef.current) return;
     processingRef.current = true;
-
+    setLoadingAction("proceed");
+    setProcessingStage("transcribing");
+    setProcessingClip(1);
     try {
       setLoading(true);
-      const transcription = await uploadVoiceFile(recordedUri);
-      let showChat = [];
-      try {
-        showChat = await generateChat(transcription);
-      } catch (error) {
-        faildMessage(error instanceof Error ? error.message : "Conversation generation failed. Your transcript is still available.");
+      const transcripts: string[] = [];
+      for (let index = 0; index < clips.length; index++) {
+        const clip = clips[index];
+        setProcessingClip(index + 1);
+        const text = clip.transcript ?? await uploadVoiceFile(clip.uri);
+        transcripts.push(text);
+        setClips((previous) => previous.map((item) => item.id === clip.id ? { ...item, transcript: text } : item));
       }
-      navigation.navigate("Transcript", {
-        data: { patient, transcription, showChat },
-      });
-      // Keep the clip available when the user returns from the transcript.
-    } catch (err) {
-      faildMessage(err instanceof Error ? err.message : "Audio transcription failed. Please try again.");
-    } finally {
-      processingRef.current = false;
-      setLoading(false);
-    }
+      const transcription = transcripts.join("\n\n");
+      setProcessingStage("conversation");
+      let showChat = [];
+      try { showChat = await generateChat(transcription); }
+      catch (error) { faildMessage(error instanceof Error ? error.message : "Conversation generation failed. Your transcript is still available."); }
+      if (navigation.isFocused?.() === false) return;
+      navigation.navigate("Transcript", { data: { patient, transcription, showChat } });
+    } catch (error) {
+      faildMessage(error instanceof Error ? error.message : "Audio transcription failed. Please try again.");
+    } finally { processingRef.current = false; setLoading(false); setLoadingAction(null); }
   };
+
   const handleSampleload = async () => {
     if (processingRef.current) return;
     processingRef.current = true;
+    setLoadingAction("sample");
     try {
       setLoading(true);
-      const data = await generateChat(SAMPLE_NOTE);
-        navigation.navigate("Transcript", {
-          data: {
-            patient: patient,
-            transcription: SAMPLE_NOTE,
-            showChat: data,
-          },
-        });
-      // Keep the recorded clip available while the sample is being processed.
-    } catch (err) {
-      faildMessage(err instanceof Error ? err.message : "Sample processing failed. Please try again.");
-    } finally {
-      processingRef.current = false;
-      setLoading(false);
-    }
+      const showChat = await generateChat(SAMPLE_NOTE);
+      if (navigation.isFocused?.() === false) return;
+      navigation.navigate("Transcript", { data: { patient, transcription: SAMPLE_NOTE, showChat } });
+    } catch (error) { faildMessage(error instanceof Error ? error.message : "Sample processing failed. Please try again."); }
+    finally { processingRef.current = false; setLoading(false); setLoadingAction(null); }
   };
 
-  return (
-    <ScreenWrapper
-      title="Patient Visit"
-      headerUnScrollable={() => (
-        <View style={styles.header}>
-          <Pressable accessibilityLabel="Go back" hitSlop={12} onPress={() => navigation.goBack()}>
-            <Ionicons name="chevron-back" size={30} color="#181B78" />
-          </Pressable>
-          <Text style={styles.headerTitle}>Patient Visit</Text>
-          <View style={{ width: 30 }} />
-        </View>
-      )}
-      footerUnScrollable={() => {
-        return (
-          recordedUri && (
-            <View style={styles.recordedFooter}>
-              <View style={styles.audioPreview}>
-                <PlayRecordedAudio uri={recordedUri} />
-              </View>
-              <View style={styles.actionRow}>
-              <CustomButton
-                title={"Proceed"}
-                onPress={handleProceed}
-                isLoading={loading}
-                style={styles.footerAction}
-                textStyle={styles.footerActionText}
-              />
-              {__DEV__ && <CustomButton
-                title={"Load Sample"}
-                onPress={handleSampleload}
-                isLoading={loading}
-                style={styles.footerAction}
-                textStyle={styles.footerActionText}
-              />}
-              </View>
-            </View>
-          )
-        );
-      }}
-    >
-      {loading && <AIProcessingLoader visible={loading} />}
-      <View style={styles.main}>
-        <View pointerEvents="none" style={styles.backgroundCircle} />
-        <View style={styles.contentWrapper}>
-          <View style={[styles.hero, { width: heroSize, height: heroSize }]}>
-            <View style={styles.innerHalo} />
-            <View style={styles.micCircle}>
-              <Ionicons name="mic" size={heroSize * 0.30} color="#FFFFFF" />
-            </View>
-          </View>
-          <Text style={styles.listeningText}>
-            {isPaused ? "Paused" : isRecording ? "Listening..." : recordedUri ? "Recording Complete" : "Ready to Record"}
-          </Text>
-          <RecordingWaveform active={isRecording && !isPaused} metering={metering} />
-            <Text style={styles.timerText}>{formatTime(timer)}</Text>
+  const title = processing ? "Transcribing" : isPaused ? "Paused" : isRecording ? "Recording" : clips.length ? "Recording saved" : "Ready to record";
+  const status = processing ? processingStage === "transcribing" ? `Transcribing clip ${processingClip} of ${clips.length}...` : "Preparing conversation..."
+    : isPaused ? "Tap resume when you're ready." : isRecording ? "Recording..." : clips.length ? "Preview your clips or record another." : "Tap the microphone to begin.";
 
-          {!isRecording && !recordedUri ? (
-            <TouchableOpacity disabled={isBusy} style={styles.startButton} onPress={toggleRecording}>
-              <Ionicons name="mic" size={20} color="#FFFFFF" />
-              <Text style={styles.startButtonText}>{isBusy ? "Starting..." : "Start Recording"}</Text>
-            </TouchableOpacity>
-          ) : null}
-        {isRecording ? (
-          <View style={styles.bottomControls}>
-            <TouchableOpacity
-              accessibilityRole="button"
-              accessibilityLabel={isPaused ? "Resume recording" : "Pause recording"}
-              style={styles.pauseButton}
-              disabled={isBusy}
-              onPress={isPaused ? resumeRecording : pauseRecording}
-            >
-              <Ionicons
-                name={isPaused ? "play" : "pause"}
-                size={33}
-                color="#2359AC"
-              />
-            </TouchableOpacity>
-            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Stop recording"
-              disabled={isBusy} style={styles.stopButton} onPress={toggleRecording}>
-              <View style={styles.stopSquare} />
-            </TouchableOpacity>
-          </View>
-        ) : null}
-        </View>
-        <View style={styles.transcriptionCard}>
-          <View style={styles.transcriptionIcon}>
-            <Ionicons name="pulse" size={33} color="#377BFA" />
-          </View>
-          <Text style={styles.transcriptionText}>
-            {recordingError ? recordingError : isPaused ? "Recording paused. Tap resume to continue."
-              : isRecording ? statusMessage || "Recording patient and provider voices..."
-              : recordedUri ? "Recording saved. Preview it or proceed to generate notes."
-              : "Record patient and provider voices..."}
-          </Text>
-        </View>
+  return <ScreenWrapper title="Patient Visit" scrollEnabled background={<RecordingBackdrop />}
+    barStyle="light-content" statusBarColor="#061C55"
+    headerUnScrollable={() => <View style={styles.header}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Go back" disabled={loading || isBusy}
+        hitSlop={12} onPress={cancelRecording}><Ionicons name="chevron-back" size={32} color="#FFFFFF" /></Pressable>
+      <Text numberOfLines={1} style={styles.patient}>{patient.name}</Text><View style={{ width: 32 }} />
+    </View>}
+    footerUnScrollable={() => clips.length ? <View style={styles.footer}>
+      <View style={styles.clipsHeading}><Text style={styles.clipsTitle}>Recordings · {clips.length}</Text>
+        {!isRecording && <Pressable accessibilityRole="button" accessibilityLabel="Record another clip" disabled={loading || isBusy}
+          onPress={toggleRecording} style={styles.recordAgain}><Ionicons name="add" size={17} color="#D9F6FF" /><Text style={styles.recordAgainText}>Record again</Text></Pressable>}
       </View>
-    </ScreenWrapper>
-  );
+      <ScrollView style={{ maxHeight: Math.min(185, height * 0.22) }} showsVerticalScrollIndicator={false}>
+        {clips.map((clip, index) => <View key={clip.id} style={styles.clipCard}>
+          <View style={styles.clipHeading}><Text style={styles.clipTitle}>Clip {index + 1} · {formatTime(clip.duration)}</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel={`Delete clip ${index + 1}`} disabled={loading || isBusy || isRecording}
+              hitSlop={8} onPress={() => setClips((previous) => previous.filter((item) => item.id !== clip.id))}>
+              <Ionicons name="trash-outline" size={18} color="#47739E" />
+            </Pressable>
+          </View>
+          {!isRecording && !loading && <PlayRecordedAudio uri={clip.uri} />}
+        </View>)}
+      </ScrollView>
+      <View style={styles.actions}><CustomButton title="Proceed" onPress={handleProceed} disabled={loading || isBusy || isRecording}
+        style={styles.proceed} textStyle={styles.proceedText} />
+        {__DEV__ && <CustomButton title="Load Sample" onPress={handleSampleload} isLoading={loading && loadingAction === "sample"}
+          disabled={loading || isRecording} style={styles.sample} />}
+      </View>
+    </View> : null}>
+    <View style={styles.main}>
+      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.subtitle}>{processing ? "Turning your recordings into a transcript." : "Speak clearly, we’re listening."}</Text>
+      <View style={styles.mic}><RecordingMic size={heroSize} active={isRecording && !isPaused && !processing}
+        processing={processing} stage={processingStage} /></View>
+      <Text style={styles.timer}>{formatTime(timer)}</Text>
+      <Text style={styles.status} accessibilityLiveRegion="polite">{status}</Text>
+      {processing && <Text style={styles.estimate}>Estimated progress</Text>}
+      {!processing && <RecordingWaves active={isRecording && !isPaused} metering={metering} />}
+      {!!recordingError && <Text accessibilityRole="alert" style={styles.error}>{recordingError}</Text>}
+      <View style={styles.controls}>
+        {isRecording ? <>
+          <View style={styles.control}><TouchableOpacity accessibilityRole="button" accessibilityLabel={isPaused ? "Resume recording" : "Pause recording"}
+            disabled={isBusy || loading} style={styles.sideButton} onPress={isPaused ? resumeRecording : pauseRecording}>
+            <Ionicons name={isPaused ? "play" : "pause"} size={28} color="#E8F8FF" /></TouchableOpacity>
+            <Text style={styles.controlLabel}>{isPaused ? "Resume" : "Pause"}</Text></View>
+          <View style={styles.control}><TouchableOpacity accessibilityRole="button" accessibilityLabel="Stop recording" disabled={isBusy || loading}
+            style={styles.stopButton} onPress={toggleRecording}><View style={styles.stopSquare} /></TouchableOpacity><Text style={styles.stopLabel}>Stop</Text></View>
+          <View style={styles.control}><TouchableOpacity accessibilityRole="button" accessibilityLabel="Cancel recording" disabled={isBusy || loading}
+            style={styles.sideButton} onPress={cancelRecording}><Ionicons name="close" size={34} color="#E8F8FF" /></TouchableOpacity><Text style={styles.controlLabel}>Cancel</Text></View>
+        </> : !clips.length ? <View style={styles.control}><TouchableOpacity accessibilityRole="button" accessibilityLabel="Start recording"
+          disabled={isBusy || loading} style={styles.stopButton} onPress={toggleRecording}><Ionicons name="mic-outline" size={32} color="#147BCB" /></TouchableOpacity>
+          <Text style={styles.stopLabel}>{isBusy ? "Starting..." : "Start Recording"}</Text></View> : null}
+      </View>
+    </View>
+  </ScreenWrapper>;
 }
-export default VoiceRecordScreen;
 
 const styles = StyleSheet.create({
-  recordedFooter: { paddingBottom: 8, flexShrink: 0,
-    backgroundColor: COLORS.background },
-  actionRow: { width: setWidth(90), alignSelf: "center", flexDirection: "row",
-    alignItems: "center", gap: 12, marginTop: 10, marginBottom: setHeight(2) },
-  footerAction: { flex: 1, width: "auto", borderRadius: setHeight(1),
-    marginVertical: 0, paddingVertical: 12 },
-  footerActionText: { fontSize: setHeight(1.8), fontWeight: "500" },
-  header: { height: 62, paddingHorizontal: 20, flexDirection: "row",
-    alignItems: "center", justifyContent: "space-between", backgroundColor: COLORS.background },
-  headerTitle: { color: "#181B78", fontSize: 22, fontWeight: "700" },
-  backgroundCircle: { position: "absolute", width: 120, height: 120, borderRadius: 60,
-    left: -90, top: 220, backgroundColor: "#E8F4FF" },
-  hero: { alignSelf: "center", borderRadius: 999, backgroundColor: "#F0F6FC",
-    alignItems: "center", justifyContent: "center" },
-  innerHalo: { position: "absolute", width: "78%", height: "78%",
-    borderRadius: 999, backgroundColor: "#E8F1FA" },
-  micCircle: { width: "61%", height: "61%", alignItems: "center", justifyContent: "center",
-    borderRadius: 999, overflow: "hidden", backgroundColor: COLORS.primary },
-  listeningText: { color: "#181B78", fontSize: 22, fontWeight: "700",
-    textAlign: "center", marginTop: 8 },
-  transcriptionIcon: { width: 54, height: 54, borderRadius: 27,
-    backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center" },
-  main: {
-    flex: 1,
-    justifyContent: "space-between",
-    paddingHorizontal: 22,
-    paddingTop: 4,
-    paddingBottom: 20,
-    overflow: "hidden",
-    backgroundColor: "transparent",
-  },
-  contentWrapper: {
-    width: "100%",
-    gap: 4,
-  },
-  transcriptionCard: {
-    minHeight: 86,
-    borderRadius: 8,
-    padding: 15,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    backgroundColor: "#F0F6FC",
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  transcriptionText: {
-    flex: 1,
-    color: "#2458AE",
-    fontSize: 16,
-    lineHeight: 23,
-  },
-  startButton: {
-    height: 52,
-    borderRadius: 26,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: COLORS.primary,
-  },
-  startButtonText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  timerText: {
-    fontSize: 30,
-    fontWeight: "700",
-    color: "#181B78",
-    marginTop: 0,
-    textAlign: "center",
-    letterSpacing: 1,
-  },
-  bottomControls: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 65,
-    alignItems: "center",
-    marginTop: 10,
-    marginBottom: 12,
-  },
-  pauseButton: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#D8EDFF",
-    borderWidth: 1,
-    borderColor: "#FFFFFF",
-  },
-  stopButton: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#FF5D5E",
-  },
-  stopSquare: {
-    width: 25,
-    height: 25,
-    borderRadius: 4,
-    backgroundColor: "#FFFFFF",
-  },
-  audioPreview: {
-    marginTop: 12,
-    marginBottom: 8,
-  },
+  header: { height: 48, paddingHorizontal: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  patient: { color: "#C1E6FF", fontSize: 13, flex: 1, textAlign: "center", paddingHorizontal: 12 },
+  main: { alignItems: "center", paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 },
+  title: { color: "#FFFFFF", fontSize: 32, fontWeight: "600", textAlign: "center" },
+  subtitle: { color: "#B9DEFF", fontSize: 15, marginTop: 7, textAlign: "center" },
+  mic: { marginTop: 16, marginBottom: 5 },
+  timer: { color: "#FFFFFF", fontSize: 38, fontWeight: "300", fontVariant: ["tabular-nums"] },
+  status: { color: "#BDE8FF", fontSize: 14, marginTop: 3, marginBottom: 4, textAlign: "center" },
+  estimate: { color: "#BDE8FF", fontSize: 11, marginTop: 8 },
+  controls: { flexDirection: "row", justifyContent: "space-evenly", width: "100%", alignItems: "center", marginTop: 12 },
+  control: { alignItems: "center", gap: 8 },
+  sideButton: { width: 62, height: 62, borderRadius: 31, borderWidth: 1.5, borderColor: "rgba(197,235,255,0.4)", alignItems: "center", justifyContent: "center" },
+  stopButton: { width: 74, height: 74, borderRadius: 37, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center", shadowColor: "#BAEDFF", shadowOpacity: 0.6, shadowRadius: 20, shadowOffset: { width: 0, height: 0 }, elevation: 8 },
+  stopSquare: { width: 22, height: 22, borderRadius: 5, backgroundColor: "#FF5367" },
+  controlLabel: { color: "#BDE8FF", fontSize: 13 },
+  stopLabel: { color: "#FFFFFF", fontSize: 13, fontWeight: "600" },
+  error: { color: "#FFE3E7", textAlign: "center", fontSize: 13, marginTop: 8 },
+  footer: { gap: 9, paddingBottom: 4 },
+  clipsHeading: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  clipsTitle: { color: "#FFFFFF", fontSize: 15, fontWeight: "600" },
+  recordAgain: { flexDirection: "row", alignItems: "center", gap: 4, minHeight: 36 },
+  recordAgainText: { color: "#D9F6FF", fontSize: 13 },
+  clipCard: { borderRadius: 14, backgroundColor: "rgba(245,252,255,0.95)", padding: 10, marginBottom: 8 },
+  clipHeading: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  clipTitle: { color: "#20557F", fontSize: 12, fontWeight: "600" },
+  actions: { flexDirection: "row", gap: 10 },
+  proceed: { flex: 1, width: "auto", backgroundColor: "#EDF9FF", shadowOpacity: 0, elevation: 0 },
+  proceedText: { color: "#0875BF", fontWeight: "600" },
+  sample: { flex: 1, width: "auto" },
 });
