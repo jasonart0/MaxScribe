@@ -2,6 +2,7 @@
 import { COLORS } from "constants/Colors";
 import React from "react";
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import BlueGradient from "./BlueGradient";
 interface ConfirmationModalProps {
   visible: boolean;
   message: string;
@@ -40,6 +41,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
               style={[styles.button, styles.confirm]}
               onPress={onConfirm}
             >
+              <BlueGradient />
               <Text style={styles.confirmText}>Confirm</Text>
             </TouchableOpacity>
           </View>
@@ -86,6 +88,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   button: {
+    overflow: "hidden",
     flex: 1,
     paddingVertical: 12,
     borderRadius: 8,
@@ -96,7 +99,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#f0f0f0",
   },
   confirm: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: "#2B69C1",
   },
   cancelText: {
     color: "#333",

@@ -1,7 +1,7 @@
 import { setHeight } from "@lib";
-import { COLORS } from "constants/Colors";
 import React, { useEffect, useState } from "react";
 import { Animated, Easing, Modal, StyleSheet, View } from "react-native";
+import BlueGradient from "./BlueGradient";
 interface StepLoaderProps {
   visible: boolean;
   onFinish?: () => void;
@@ -111,7 +111,9 @@ export default function StepLoader({ visible, onFinish }: StepLoaderProps) {
                   ],
                 },
               ]}
-            />
+            >
+              <BlueGradient />
+            </Animated.View>
           ))}
         </View>
         <Animated.Text style={[styles.text, { opacity: fadeAnim }]}>
@@ -141,10 +143,11 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   dot: {
+    overflow: "hidden",
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: COLORS.primary, // Neon AI color
+    backgroundColor: "#2B69C1",
   },
   text: {
     marginTop: 10,

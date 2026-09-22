@@ -13,6 +13,7 @@ import {
 import { savePatientScribeData } from "api/Encounter";
 import { apiErrorMessage } from "api/response";
 import DynamicEditor from "components/EditAble/DynamicEditable";
+import BlueGradient from "components/BlueGradient";
 import EditableNote from "components/EditAble/Richtext";
 import MicPulse from "components/mic";
 import CollapsibleSection from "components/Section";
@@ -357,12 +358,14 @@ export default function Notes({ route, navigation }: ScreenProps<"Notes">) {
             ) : (
               <View
                 style={{
+                  overflow: "hidden",
                   borderRadius: setHeight(5),
-                  backgroundColor: !isListening ? COLORS.primary : "#ffffffff",
+                  backgroundColor: !isListening ? "#2B69C1" : "#ffffffff",
                   justifyContent: "center",
                   alignItems: "center",
                 }}
               >
+                {!isListening && <BlueGradient />}
                 <Ionicons
                   name="mic"
                   size={setHeight(3)}

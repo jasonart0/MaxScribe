@@ -1,4 +1,4 @@
-import { ScreenWrapper } from "@components";
+import { HeaderTitle, ScreenWrapper } from "@components";
 import { Ionicons } from "@expo/vector-icons";
 import { faildMessage } from "@lib";
 import { useFocusEffect } from "@react-navigation/native";
@@ -37,7 +37,7 @@ export default function HomeScreen({ navigation, route }: any) {
   const [filterTab, setFilterTab] = useState<"ALL" | "TODAY_SCHEDULED">("ALL");
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [loadingTarget, setLoadingTarget] = useState<"search" | "refresh">("search");
+  const [searching, setSearching] = useState(false);
   const [patients, setPatients] = useState<Patient[]>(route?.params?.initialPatients ?? []);
   const [loadError, setLoadError] = useState<string | null>(route?.params?.initialError ?? null);
   const [openingPatient, setOpeningPatient] = useState<string | number | null>(null);
@@ -46,10 +46,10 @@ export default function HomeScreen({ navigation, route }: any) {
   const requestId = useRef(0);
   const debouncedSearch = useDebounce(search.trim(), 500);
 
-  const loadPatients = useCallback(async (query: string, target: "search" | "refresh" = "search", selectedFilter: "ALL" | "TODAY_SCHEDULED" = filterTab) => {
+  const loadPatients = useCallback(async (query: string, target: "search" | "refresh" | "background" = "background", selectedFilter: "ALL" | "TODAY_SCHEDULED" = filterTab) => {
     const currentRequest = ++requestId.current;
     setLoading(true);
-    setLoadingTarget(target);
+    setSearching(target === "search");
     setRefreshing(target === "refresh");
     try {
       const data = selectedFilter === "TODAY_SCHEDULED"
@@ -70,6 +70,7 @@ export default function HomeScreen({ navigation, route }: any) {
     } finally {
       if (currentRequest === requestId.current) {
         setLoading(false);
+        setSearching(false);
         setRefreshing(false);
       }
     }
@@ -77,12 +78,16 @@ export default function HomeScreen({ navigation, route }: any) {
 
   useFocusEffect(useCallback(() => {
     if (preparedRef.current && !debouncedSearch) preparedRef.current = false;
-    else void loadPatients(debouncedSearch, "search", filterTab);
+    else void loadPatients(debouncedSearch, debouncedSearch ? "search" : "background", filterTab);
     return () => { requestId.current += 1; };
   }, [debouncedSearch, filterTab, loadPatients]));
 
   const openPatient = async (patient: Patient) => {
     if (openingRef.current || patient.patient_id == null) return;
+    requestId.current += 1;
+    setLoading(false);
+    setSearching(false);
+    setRefreshing(false);
     openingRef.current = true;
     setOpeningPatient(patient.patient_id);
     try {
@@ -102,18 +107,22 @@ export default function HomeScreen({ navigation, route }: any) {
       title="Patients"
       showback={false}
       backgroundColor={COLORS.background}
-      statusBarColor={COLORS.background}
+      barStyle="light-content"
+      statusBarColor="#2B69C1"
+      headerUnScrollable={() => (
+        <HeaderTitle title="Patients" showback={false}>
+          <CustomSearchBar
+            value={search}
+            placeholder="Search Patient"
+            onChangeText={setSearch}
+            onPressSearch={() => loadPatients(search.trim(), "search", filterTab)}
+            onPressAction={() => setSearch("")}
+            isLoading={searching}
+          />
+        </HeaderTitle>
+      )}
     >
       <View style={styles.container}>
-        <CustomSearchBar
-          value={search}
-          placeholder="Search Patient"
-          onChangeText={setSearch}
-          onPressSearch={() => loadPatients(search.trim(), "search", filterTab)}
-          onPressAction={() => setSearch("")}
-          isLoading={loading && loadingTarget === "search"}
-        />
-
         <View style={styles.filterTabs}>
           {[
             { key: "ALL", label: "All Patients" },
@@ -127,7 +136,7 @@ export default function HomeScreen({ navigation, route }: any) {
                 accessibilityState={{ selected: active }}
                 onPress={() => {
                   setFilterTab(tab.key as "ALL" | "TODAY_SCHEDULED");
-                  void loadPatients(search.trim(), "search", tab.key as "ALL" | "TODAY_SCHEDULED");
+                  void loadPatients(search.trim(), "background", tab.key as "ALL" | "TODAY_SCHEDULED");
                 }}
                 style={[styles.filterTab, active && styles.filterTabActive]}
               >

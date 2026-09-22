@@ -111,7 +111,7 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
   const progressLabel = processing ? `${processingProgress}%` : formatTime(timer);
 
   return <ScreenWrapper title="Patient Visit" scrollEnabled background={<RecordingBackdrop />}
-    barStyle="light-content" statusBarColor="#061C55"
+    barStyle="light-content" statusBarColor="#2B69C1"
     headerUnScrollable={() => <View style={styles.header}>
       <Pressable accessibilityRole="button" accessibilityLabel="Go back" disabled={loading || isBusy}
         hitSlop={12} onPress={cancelRecording}><Ionicons name="chevron-back" size={32} color="#FFFFFF" /></Pressable>

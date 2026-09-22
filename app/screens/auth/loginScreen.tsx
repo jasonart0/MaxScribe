@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { faildMessage, isNotEmpty, successMessage } from "@lib";
 import { loginUser } from "api/auth";
 import AppBackground from "components/AppBackground";
+import BlueGradient from "components/BlueGradient";
 import LoadingOverlay from "components/LoadingOverlay";
 import { COLORS } from "constants/Colors";
 import { getUserData } from "lib/authdata";
@@ -236,8 +237,9 @@ export default function LoginScreen({ navigation }: any) {
                     pressed && styles.signInPressed,
                   ]}
                 >
+                  <BlueGradient />
                   <Text style={styles.signInText}>Sign In</Text>
-                  {isLoading && <LoadingOverlay backgroundColor={PRIMARY} color="#FFFFFF" />}
+                  {isLoading && <LoadingOverlay backgroundColor="transparent" color="#FFFFFF" />}
                 </Pressable>
               </View>
             </View>
@@ -333,7 +335,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: PRIMARY,
+    backgroundColor: "#2B69C1",
   },
   optionsRow: {
     flexDirection: "row",

@@ -1,6 +1,7 @@
 import { COLORS } from "constants/Colors";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View, type StyleProp, type ViewStyle } from "react-native";
+import BlueGradient from "./BlueGradient";
 const CustomSelector = ({ options, selected, onSelect,containerStyle }: { options: string[]; selected?: string; onSelect: (option: string) => void; containerStyle?: StyleProp<ViewStyle> }) => {
   return (
     <View style={[styles.container, containerStyle]}>
@@ -13,6 +14,7 @@ const CustomSelector = ({ options, selected, onSelect,containerStyle }: { option
           ]}
           onPress={() => onSelect(opt)}
         >
+          {selected === opt && <BlueGradient />}
           <Text style={[styles.text, selected === opt && styles.activeText]}>
             {opt}
           </Text>
@@ -28,6 +30,7 @@ const styles = StyleSheet.create({
 
   },
   button: {
+    overflow: "hidden",
     borderWidth: 1,
     borderColor: COLORS.primary,
     borderRadius: 8,
@@ -41,7 +44,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   activeButton: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: "#2B69C1",
   },
   activeText: {
     color: "#fff",

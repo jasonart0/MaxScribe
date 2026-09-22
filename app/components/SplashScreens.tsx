@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Animated, ImageSourcePropType, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { COLORS } from "constants/Colors";
+import BlueGradient from "./BlueGradient";
 
 interface Props { onComplete: () => void }
 
@@ -86,7 +87,11 @@ export default function SplashScreens({ onComplete }: Props) {
           </Pressable>
           <View style={styles.footer}>
             <View style={styles.dots} accessibilityLabel={`Page ${activeIndex + 1} of 3`}>
-              {slides.map((_, index) => <View key={index} style={[styles.dot, index === activeIndex && styles.activeDot]} />)}
+              {slides.map((_, index) => (
+                <View key={index} style={[styles.dot, index === activeIndex && styles.activeDot]}>
+                  {index === activeIndex && <BlueGradient />}
+                </View>
+              ))}
             </View>
             <View style={styles.actions}>
               <Pressable accessibilityRole="button" onPress={onComplete}
@@ -95,6 +100,7 @@ export default function SplashScreens({ onComplete }: Props) {
               </Pressable>
               <Pressable accessibilityRole="button" disabled={isTransitioning} onPress={advance}
                 style={({ pressed }) => [styles.nextButton, pressed && styles.pressed]}>
+                <BlueGradient />
                 <Text style={styles.nextText}>{last ? "Get Started" : "Continue"}</Text>
               </Pressable>
             </View>
@@ -130,9 +136,9 @@ const styles = StyleSheet.create({
   footer: { paddingTop: 8, paddingBottom: 16, gap: 18 },
   dots: { flexDirection: "row", justifyContent: "center", gap: 8 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#C8DFF5" },
-  activeDot: { backgroundColor: "#087CF0" },
+  activeDot: { overflow: "hidden", backgroundColor: "#2B69C1" },
   actions: { gap: 8 },
-  nextButton: { minHeight: 44, alignItems: "center", justifyContent: "center", borderRadius: 6, backgroundColor: COLORS.primary },
+  nextButton: { overflow: "hidden", minHeight: 44, alignItems: "center", justifyContent: "center", borderRadius: 6, backgroundColor: "#2B69C1" },
   nextText: { color: "#FFFFFF", fontSize: 15, fontWeight: "600" },
   pressed: { opacity: 0.8 },
 });

@@ -1,11 +1,13 @@
 import { COLORS } from "constants/Colors";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
+import BlueGradient from "./BlueGradient";
 
 export default function Header({ name, initials }: { name: string; initials: string }) {
   return (
     <View style={styles.container}>
       <View style={styles.avatar}>
+        <BlueGradient />
         <Text style={styles.avatarText}>{initials}</Text>
       </View>
       <View style={styles.details}>
@@ -25,10 +27,11 @@ const styles = StyleSheet.create({
     marginVertical: 12,
   },
   avatar: {
+    overflow: "hidden",
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: COLORS.deep,
+    backgroundColor: "#2B69C1",
     alignItems: "center",
     justifyContent: "center",
   },

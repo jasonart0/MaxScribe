@@ -3,6 +3,7 @@ import { THEME } from 'constants/Theme';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 import LoadingOverlay from './LoadingOverlay';
+import BlueGradient from './BlueGradient';
 
 type Props = { title: string; onPress: () => void; style?: StyleProp<ViewStyle>; textStyle?: StyleProp<TextStyle>; isLoading?: boolean; disabled?: boolean; variant?: 'primary' | 'secondary' | 'neon' };
 
@@ -18,8 +19,9 @@ export default function CustomButton({ title, onPress, style, textStyle, isLoadi
       onPress={onPress}
       style={[styles.button, secondary && styles.secondary, neon && styles.neon, style, disabled && !isLoading && { opacity: 0.5 }]}
     >
+      {!secondary && !neon && <BlueGradient />}
       <Text style={[styles.text, secondary && { color: COLORS.primary }, neon && { color: '#A0FFF3' }, textStyle]}>{title}</Text>
-      {isLoading && <LoadingOverlay backgroundColor={neon ? '#07587A' : secondary ? COLORS.card : COLORS.primary}
+      {isLoading && <LoadingOverlay backgroundColor={neon ? '#07587A' : secondary ? COLORS.card : 'transparent'}
         color={neon ? '#02DBC4' : secondary ? COLORS.primary : COLORS.card} />}
     </TouchableOpacity>
   );
@@ -28,7 +30,7 @@ export default function CustomButton({ title, onPress, style, textStyle, isLoadi
 const styles = StyleSheet.create({
   button: {
     overflow: 'hidden',
-    backgroundColor: COLORS.primary,
+    backgroundColor: '#2B69C1',
     minHeight: 52,
     paddingVertical: THEME.spacing.sm,
     paddingHorizontal: THEME.spacing.lg,

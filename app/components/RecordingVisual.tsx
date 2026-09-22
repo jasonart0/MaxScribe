@@ -17,8 +17,8 @@ export function RecordingBackdrop() {
   }, [drift, focused]);
   return <View pointerEvents="none" style={styles.backdrop}>
     <Svg width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 400 850">
-      <Defs><LinearGradient id="recordingBlue" x1="0" y1="0" x2="1" y2="1">
-        <Stop offset="0" stopColor="#061C55" /><Stop offset="0.5" stopColor="#066BC4" /><Stop offset="1" stopColor="#02DBC4" />
+      <Defs><LinearGradient id="recordingBlue" x1="0" y1="0" x2="1" y2="0">
+        <Stop offset="0" stopColor="#2B69C1" /><Stop offset="1" stopColor="#20D1C3" />
       </LinearGradient></Defs>
       <Rect width="400" height="850" fill="url(#recordingBlue)" />
     </Svg>
@@ -124,7 +124,7 @@ export function RecordingWaves({ active, metering }: { active: boolean; metering
 }
 
 const styles = StyleSheet.create({
-  backdrop: { position: "absolute", top: 0, bottom: 0, left: 0, right: 0, overflow: "hidden", backgroundColor: "#0758AE" },
+  backdrop: { position: "absolute", top: 0, bottom: 0, left: 0, right: 0, overflow: "hidden", backgroundColor: "#2B69C1" },
   flame: { position: "absolute", top: "15%", right: "-20%", width: "120%", height: "90%" },
   halo: { position: "absolute", width: "100%", height: "100%", borderRadius: 999, backgroundColor: "rgba(132,218,255,0.09)", borderWidth: 1, borderColor: "rgba(192,235,255,0.08)", alignItems: "center", justifyContent: "center" },
   innerHalo: { width: "82%", height: "82%", borderRadius: 999, backgroundColor: "rgba(154,224,255,0.08)" },

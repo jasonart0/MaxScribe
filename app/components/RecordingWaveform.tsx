@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Animated, StyleSheet, View } from "react-native";
-import { COLORS } from "constants/Colors";
+import BlueGradient from "./BlueGradient";
 
 interface Props {
   active: boolean;
@@ -27,7 +27,9 @@ export default function RecordingWaveform({ active, metering }: Props) {
   return (
     <View style={styles.waveform} pointerEvents="none" accessibilityLabel="Microphone sound levels">
       {bars.map((height, index) => (
-        <Animated.View key={index} style={[styles.bar, { height }]} />
+        <Animated.View key={index} style={[styles.bar, { height }]}>
+          <BlueGradient />
+        </Animated.View>
       ))}
     </View>
   );
@@ -35,5 +37,5 @@ export default function RecordingWaveform({ active, metering }: Props) {
 
 const styles = StyleSheet.create({
   waveform: { flexDirection: "row", alignItems: "center", justifyContent: "center", height: 68, width: "100%" },
-  bar: { width: 3, marginHorizontal: 2.5, borderRadius: 3, backgroundColor: COLORS.primary },
+  bar: { overflow: "hidden", width: 3, marginHorizontal: 2.5, borderRadius: 3, backgroundColor: "#2B69C1" },
 });

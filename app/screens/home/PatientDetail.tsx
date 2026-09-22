@@ -168,7 +168,34 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
       <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
       <View style={styles.container}>
-        <HeaderTitle title={patient?.name || "Patient Details"} />
+        <HeaderTitle
+          titleContent={(
+            <View style={styles.headerPatient}>
+              <AvatarInitials
+                color="#FFFFFF"
+                imageUri={imageUri}
+                name={patient.name || "Unknown"}
+                size={38}
+                style={styles.headerAvatar}
+              />
+              <View style={styles.headerPatientCopy}>
+                <View style={styles.headerPatientNameRow}>
+                  <Text numberOfLines={1} style={styles.headerPatientName}>
+                    {patient.name || "Unknown Patient"}
+                  </Text>
+                  <View style={[styles.statusPill, statusStyle.pill]}>
+                    <Text numberOfLines={1} style={[styles.statusText, statusStyle.text]}>
+                      {patient.patient_status || "Patient"}
+                    </Text>
+                  </View>
+                </View>
+                <Text numberOfLines={1} style={styles.headerPatientMeta}>
+                  {age} yrs • {gender}
+                </Text>
+              </View>
+            </View>
+          )}
+        />
 
         <FlatList
           contentContainerStyle={styles.listContent}
@@ -176,30 +203,6 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
           keyExtractor={(item, index) => String(item.id ?? `visit-${index}`)}
           ListHeaderComponent={
             <>
-              <View style={styles.profileSection}>
-                <AvatarInitials
-                  color="#1358C8"
-                  imageUri={imageUri}
-                  name={patient.name || "Unknown"}
-                  size={40}
-                  style={styles.avatar}
-                />
-                <View style={styles.profileCopy}>
-                  <Text numberOfLines={1} style={styles.patientName}>
-                    {patient.name || "Unknown Patient"}
-                  </Text>
-                  <View style={styles.metaRow}>
-                    <Text style={styles.demographics}>
-                      {age} yrs <Text style={styles.dot}>•</Text> {gender}
-                    </Text>
-                    <View style={[styles.statusPill, statusStyle.pill]}>
-                      <Text style={[styles.statusText, statusStyle.text]}>
-                        {patient.patient_status || "Patient"}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              </View>
               <Text style={styles.historyTitle}>Visit history</Text>
               {historyError && !!visits.length && <Text accessibilityRole="alert" style={styles.emptyText}>Unable to load encounters. Please try again.</Text>}
               {historyError && <CustomButton title="Retry" variant="secondary" isLoading={loading && !refreshing}
@@ -245,14 +248,13 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   headerButton: { width: 42, height: 42, alignItems: "center", justifyContent: "center" },
-  listContent: { paddingHorizontal: 16, paddingBottom: 28 },
-  profileSection: { flexDirection: "row", alignItems: "center", paddingHorizontal: 0, marginBottom: 4 },
-  avatar: { borderWidth: 1, borderColor: COLORS.border, backgroundColor: "#F0F6FC" },
-  profileCopy: { flex: 1, marginLeft: 10 },
-  patientName: { color: COLORS.deep, fontSize: 18, lineHeight: 22, fontWeight: "700", marginBottom: 2 },
-  metaRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
-  demographics: { color: COLORS.primary, fontSize: 12, flexShrink: 1 },
-  dot: { color: "#287BE4" },
+  listContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 28 },
+  headerPatient: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 3 },
+  headerAvatar: { borderWidth: 1, borderColor: "rgba(255,255,255,0.72)", backgroundColor: "rgba(255,255,255,0.18)" },
+  headerPatientCopy: { flex: 1, minWidth: 0 },
+  headerPatientNameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  headerPatientName: { flexShrink: 1, color: "#FFFFFF", fontSize: 14, lineHeight: 18, fontWeight: "700" },
+  headerPatientMeta: { marginTop: 1, color: "rgba(255,255,255,0.82)", fontSize: 11, lineHeight: 15 },
   statusPill: {
     alignSelf: "flex-start",
     paddingHorizontal: 8,
@@ -270,7 +272,7 @@ const styles = StyleSheet.create({
   statusTextWarning: { color: "#A56500" },
   statusTextDanger: { color: "#C63B3B" },
   statusTextInfo: { color: "#1A73D8" },
-  historyTitle: { marginTop: 20, marginBottom: 4, fontSize: 16, fontWeight: "600", color: COLORS.deep },
+  historyTitle: { marginBottom: 4, fontSize: 16, fontWeight: "600", color: COLORS.deep },
   retryButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: 16, marginTop: 8 },
   retryText: { color: COLORS.primary, fontWeight: "600" },
   contactCard: {
