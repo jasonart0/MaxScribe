@@ -5,5 +5,6 @@
   "expo.inlineModules.xcodeProjectTargets": "{\"mainTarget\":\"MaxScribe\",\"targets\":[]}",
   "ios.forceStaticLinking": "[]",
   "apple.privacyManifestAggregationEnabled": "true",
-  "EXPO_USE_PRECOMPILED_MODULES": "true"
+  "ios.buildReactNativeFromSource": "true",
+  "EXPO_USE_PRECOMPILED_MODULES": "false"
 }
