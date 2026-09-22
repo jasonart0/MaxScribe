@@ -13,7 +13,7 @@
     "check": "npm run lint && npm run typecheck && npm test",
     "check:api": "node scripts/check-api-live.cjs",
     "export:check": "expo export --platform all --output-dir .expo/release-export",
-    "update:production": "eas update --channel production",
+    "update:production": "eas update --channel production --environment production",
     "build:testflight": "eas build --platform ios --profile production --auto-submit",
     "submit:testflight": "eas submit --platform ios --profile production --latest"
   },

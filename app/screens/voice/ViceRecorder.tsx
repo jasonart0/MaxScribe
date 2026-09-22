@@ -7,7 +7,7 @@ import RecordingMic, { RecordingBackdrop, RecordingWaves } from "components/Reco
 import { SAMPLE_NOTE } from "constants/dummyData";
 import { useVoiceRecorder } from "hooks/useAudioRecording";
 import * as React from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from "react-native";
 import type { ScreenProps } from "types/navigation";
 
 type Clip = { id: number; uri: string; duration: number; transcript?: string };
@@ -26,6 +26,10 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
   const { isRecording, isPaused, isBusy, recordingError, timer, metering, formatTime,
     startRecording, pauseRecording, resumeRecording, stopRecording } = useVoiceRecorder();
   const autoStartHandled = React.useRef(false);
+  const allowDiscardedExit = React.useRef(false);
+  const pendingExitAction = React.useRef<Parameters<typeof navigation.dispatch>[0] | undefined>(undefined);
+  const [discardDialogVisible, setDiscardDialogVisible] = React.useState(false);
+  const [discarding, setDiscarding] = React.useState(false);
   const processing = loading && loadingAction === "proceed";
 
   React.useEffect(() => {
@@ -46,11 +50,43 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
     } else { await startRecording(); }
   };
 
-  const cancelRecording = async () => {
+  const discardAndLeave = React.useCallback(async () => {
+    if (discarding) return;
+    setDiscarding(true);
+    try {
+      if (isRecording) await stopRecording();
+      setClips([]);
+      allowDiscardedExit.current = true;
+      setDiscardDialogVisible(false);
+      const action = pendingExitAction.current;
+      pendingExitAction.current = undefined;
+      if (action) navigation.dispatch(action);
+      else navigation.goBack();
+    } finally {
+      setDiscarding(false);
+    }
+  }, [discarding, isRecording, navigation, stopRecording]);
+
+  const confirmDiscard = React.useCallback((action?: Parameters<typeof navigation.dispatch>[0]) => {
+    pendingExitAction.current = action;
+    setDiscardDialogVisible(true);
+  }, [navigation]);
+
+  const cancelRecording = React.useCallback(() => {
     if (isBusy || loading) return;
-    if (isRecording) await stopRecording();
-    navigation.goBack();
-  };
+    if (!isRecording && !clips.length) {
+      navigation.goBack();
+      return;
+    }
+    confirmDiscard();
+  }, [clips.length, confirmDiscard, isBusy, isRecording, loading, navigation]);
+
+  React.useEffect(() => navigation.addListener?.("beforeRemove", (event) => {
+    if (allowDiscardedExit.current || (!isRecording && !clips.length)) return;
+    event.preventDefault();
+    if (isBusy || loading) return;
+    confirmDiscard(event.data.action);
+  }), [clips.length, confirmDiscard, isBusy, isRecording, loading, navigation]);
 
   const handleProceed = async () => {
     if (!clips.length || processingRef.current) return;
@@ -110,7 +146,8 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
     : isPaused ? "Tap resume when you're ready." : isRecording ? "Recording..." : clips.length ? "Preview your clips or record another." : "Tap the microphone to begin.";
   const progressLabel = processing ? `${processingProgress}%` : formatTime(timer);
 
-  return <ScreenWrapper title="Patient Visit" scrollEnabled background={<RecordingBackdrop />}
+  return <>
+  <ScreenWrapper title="Patient Visit" scrollEnabled background={<RecordingBackdrop />}
     barStyle="light-content" statusBarColor="#2B69C1"
     headerUnScrollable={() => <View style={styles.header}>
       <Pressable accessibilityRole="button" accessibilityLabel="Go back" disabled={loading || isBusy}
@@ -164,7 +201,57 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
           <Text style={styles.stopLabel}>{isBusy ? "Starting..." : "Start Recording"}</Text></View> : null}
       </View>
     </View>
-  </ScreenWrapper>;
+  </ScreenWrapper>
+  <Modal
+    animationType="fade"
+    transparent
+    visible={discardDialogVisible}
+    onRequestClose={() => {
+      if (discarding) return;
+      pendingExitAction.current = undefined;
+      setDiscardDialogVisible(false);
+    }}
+  >
+    <View style={styles.dialogOverlay}>
+      <View accessibilityRole="alert" style={styles.dialogCard}>
+        <View style={styles.dialogIcon}>
+          <Ionicons name="trash-outline" size={24} color="#FF5367" />
+        </View>
+        <Text style={styles.dialogTitle}>Discard recording?</Text>
+        <Text style={styles.dialogText}>
+          {isRecording
+            ? clips.length
+              ? "The current recording and all saved clips will be permanently discarded."
+              : "The current recording will be permanently discarded."
+            : "All saved clips will be permanently discarded."}
+        </Text>
+        <View style={styles.dialogActions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Keep recording"
+            disabled={discarding}
+            onPress={() => {
+              pendingExitAction.current = undefined;
+              setDiscardDialogVisible(false);
+            }}
+            style={styles.keepButton}
+          >
+            <Text style={styles.keepButtonText}>Keep Recording</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Discard recording"
+            disabled={discarding}
+            onPress={() => { void discardAndLeave(); }}
+            style={[styles.discardButton, discarding && styles.dialogButtonDisabled]}
+          >
+            <Text style={styles.discardButtonText}>{discarding ? "Discarding..." : "Discard"}</Text>
+          </Pressable>
+        </View>
+      </View>
+    </View>
+  </Modal>
+  </>;
 }
 
 const styles = StyleSheet.create({
@@ -201,4 +288,15 @@ const styles = StyleSheet.create({
   proceed: { flex: 1, width: "auto", minHeight: 46, paddingVertical: 8 },
   proceedText: { color: "#A0FFF3", fontWeight: "600" },
   sample: { flex: 1, width: "auto", minHeight: 46, paddingVertical: 8 },
+  dialogOverlay: { flex: 1, backgroundColor: "rgba(5, 24, 52, 0.72)", alignItems: "center", justifyContent: "center", padding: 24 },
+  dialogCard: { width: "100%", maxWidth: 360, borderRadius: 22, backgroundColor: "#FFFFFF", padding: 24, alignItems: "center", shadowColor: "#071D3D", shadowOpacity: 0.28, shadowRadius: 22, shadowOffset: { width: 0, height: 10 }, elevation: 12 },
+  dialogIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: "#FFF0F2", alignItems: "center", justifyContent: "center", marginBottom: 14 },
+  dialogTitle: { color: "#15345B", fontSize: 20, lineHeight: 26, fontWeight: "700", textAlign: "center" },
+  dialogText: { color: "#60758F", fontSize: 14, lineHeight: 21, textAlign: "center", marginTop: 8 },
+  dialogActions: { flexDirection: "row", gap: 10, width: "100%", marginTop: 22 },
+  keepButton: { flex: 1, minHeight: 46, borderRadius: 13, borderWidth: 1, borderColor: "#D6E1ED", alignItems: "center", justifyContent: "center", paddingHorizontal: 12 },
+  keepButtonText: { color: "#355574", fontSize: 14, fontWeight: "600" },
+  discardButton: { flex: 1, minHeight: 46, borderRadius: 13, backgroundColor: "#E7475B", alignItems: "center", justifyContent: "center", paddingHorizontal: 12 },
+  discardButtonText: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
+  dialogButtonDisabled: { opacity: 0.65 },
 });

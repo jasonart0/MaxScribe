@@ -4,7 +4,7 @@ const { loadApp, hookHarness, findNodes, fakeNative } = require('./load-app.cjs'
 
 function flow(options = {}) {
   const harness = hookHarness();
-  const messages = []; const routes = []; const uploads = []; const notes = [];
+  const messages = []; const routes = []; const uploads = []; const notes = []; const backEvents = [];
   const patient = { patient_id: 123, name: 'Release Test' };
   const mocks = {
     react: harness.react,
@@ -26,14 +26,43 @@ function flow(options = {}) {
       generateAINotes: async (text, id) => { notes.push({ text, id }); if (options.noteFailure) throw new Error('Notes failed'); if (options.notePending) await options.notePending; return { hpi: text }; },
     },
   };
-  const navigation = { navigate: (screen, params) => routes.push({ screen, params }) };
+  const navigation = {
+    navigate: (screen, params) => routes.push({ screen, params }),
+    goBack: () => backEvents.push('back'),
+    dispatch: (action) => backEvents.push(action),
+  };
   const Component = loadApp('app/screens/voice/' + (options.transcript ? 'Transcription' : 'ViceRecorder') + '.tsx', mocks).default;
   const render = () => harness.render(() => Component({ navigation, route: { params: options.transcript ? { data: { patient, transcription: 'Synthetic release test', showChat: [] } } : { patient } } }));
   const button = () => findNodes(findNodes(render(), (node) => node.type === 'Screen')[0].props.footerUnScrollable(), (node) => node.type === 'Button')[0];
-  return { render, button, messages, routes, uploads, notes };
+  return { render, button, messages, routes, uploads, notes, backEvents };
 }
 
 global.__DEV__ = false;
+
+test('back while recording requires confirmation before discarding audio', async () => {
+  const state = flow();
+  const screen = findNodes(state.render(), (node) => node.type === 'Screen')[0];
+  findNodes(screen.props.headerUnScrollable(), (node) => node.props?.accessibilityLabel === 'Go back')[0].props.onPress();
+  assert.equal(state.backEvents.length, 0);
+  const dialog = findNodes(state.render(), (node) => node.type === 'Modal')[0];
+  assert.equal(dialog.props.visible, true);
+  findNodes(dialog, (node) => node.props?.accessibilityLabel === 'Discard recording')[0].props.onPress();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(state.backEvents, ['back']);
+});
+
+test('back with a saved clip requires confirmation before leaving', async () => {
+  const state = flow();
+  await findNodes(state.render(), (node) => node.props?.accessibilityLabel === 'Stop recording')[0].props.onPress();
+  const screen = findNodes(state.render(), (node) => node.type === 'Screen')[0];
+  findNodes(screen.props.headerUnScrollable(), (node) => node.props?.accessibilityLabel === 'Go back')[0].props.onPress();
+  assert.equal(state.backEvents.length, 0);
+  const dialog = findNodes(state.render(), (node) => node.type === 'Modal')[0];
+  assert.equal(dialog.props.visible, true);
+  findNodes(dialog, (node) => node.props?.accessibilityLabel === 'Discard recording')[0].props.onPress();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(state.backEvents, ['back']);
+});
 
 test('recording Proceed uploads one clip on rapid double tap and opens its transcript', async () => {
   const state = flow();
