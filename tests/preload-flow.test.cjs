@@ -24,9 +24,8 @@ test('prepared encounter options are ready on first render without a duplicate f
   assert.equal(requests, 0);
 });
 
-test('patient history loads on the selected card before the detail screen opens', async () => {
-  const harness = hookHarness(); const routes = []; let finish;
-  const pending = new Promise((resolve) => { finish = resolve; });
+test('patient details opens immediately and loads history on the destination screen', () => {
+  const harness = hookHarness(); const routes = [];
   let focus;
   const Home = loadApp('app/screens/home/homeScreen.tsx', {
     react: harness.react, 'react-native': fakeNative,
@@ -36,7 +35,6 @@ test('patient history loads on the selected card before the detail screen opens'
     '@lib': { faildMessage: () => {} },
     'hooks/useDebounce': { useDebounce: (value) => value },
     'api/patients': { fetchPatients: async () => { throw new Error('Unexpected duplicate initial fetch'); } },
-    'lib/preload': { preloadPatientHistory: () => pending },
     '../../components/CustomSearchBar': 'Search', '../../components/PatientCard': 'Card',
   }).default;
   const patient = { patient_id: 1, name: 'Test Patient' };
@@ -46,11 +44,8 @@ test('patient history loads on the selected card before the detail screen opens'
   const list = findNodes(tree, (node) => node.type === 'FlatList')[0];
   assert.deepEqual(list.props.data, [patient]);
   assert.equal(findNodes(list.props.ListHeaderComponent, (node) => node.type === 'Button').length, 0);
-  const action = list.props.renderItem({ item: patient }).props.onViewPress();
-  assert.equal(routes.length, 0);
-  tree = render();
-  assert.equal(findNodes(tree, (node) => node.type === 'FlatList')[0].props.renderItem({ item: patient }).props.isLoading, true);
-  finish([{ id: 7, notes_data: '{"hpi":"Test"}' }]); await action;
+  list.props.renderItem({ item: patient }).props.onViewPress();
   assert.equal(routes[0].name, 'PatientDetails');
-  assert.equal(routes[0].params.initialVisits[0].id, 7);
+  assert.deepEqual(routes[0].params.patient, patient);
+  assert.equal(routes[0].params.initialVisits, undefined);
 });

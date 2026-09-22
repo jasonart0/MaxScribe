@@ -21,8 +21,7 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
   const [loading, setLoading] = React.useState(false);
   const [loadingAction, setLoadingAction] = React.useState<"proceed" | "sample" | null>(null);
   const [processingStage, setProcessingStage] = React.useState<"transcribing" | "conversation">("transcribing");
-  const [processingClip, setProcessingClip] = React.useState(1);
-  const [processingProgress, setProcessingProgress] = React.useState(8);
+  const [processedClips, setProcessedClips] = React.useState(0);
   const processingRef = React.useRef(false);
   const { isRecording, isPaused, isBusy, recordingError, timer, metering, formatTime,
     startRecording, pauseRecording, resumeRecording, stopRecording } = useVoiceRecorder();
@@ -58,17 +57,26 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
     processingRef.current = true;
     setLoadingAction("proceed");
     setProcessingStage("transcribing");
-    setProcessingClip(1);
+    setProcessedClips(0);
     try {
       setLoading(true);
-      const transcripts: string[] = [];
-      for (let index = 0; index < clips.length; index++) {
-        const clip = clips[index];
-        setProcessingClip(index + 1);
-        const text = clip.transcript ?? await uploadVoiceFile(clip.uri);
-        transcripts.push(text);
-        setClips((previous) => previous.map((item) => item.id === clip.id ? { ...item, transcript: text } : item));
-      }
+      const transcripts = new Array<string>(clips.length);
+      let nextClipIndex = 0;
+      const transcribeNext = async () => {
+        while (nextClipIndex < clips.length) {
+          const index = nextClipIndex++;
+          const clip = clips[index];
+          const text = clip.transcript ?? await uploadVoiceFile(clip.uri);
+          transcripts[index] = text;
+          setProcessedClips((count) => count + 1);
+          setClips((previous) => previous.map((item) => item.id === clip.id ? { ...item, transcript: text } : item));
+        }
+      };
+      const transcriptionJobs = await Promise.allSettled(
+        Array.from({ length: Math.min(2, clips.length) }, transcribeNext),
+      );
+      const failedJob = transcriptionJobs.find((job) => job.status === "rejected");
+      if (failedJob?.status === "rejected") throw failedJob.reason;
       const transcription = transcripts.join("\n\n");
       setProcessingStage("conversation");
       let showChat = [];
@@ -94,19 +102,11 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
     finally { processingRef.current = false; setLoading(false); setLoadingAction(null); }
   };
 
-  React.useEffect(() => {
-    if (!processing) {
-      setProcessingProgress(8);
-      return;
-    }
-    const interval = setInterval(() => {
-      setProcessingProgress((value) => Math.min(88, value + Math.max(1, Math.round((88 - value) / 14))));
-    }, 1400);
-    return () => clearInterval(interval);
-  }, [processing]);
-
+  const processingProgress = processingStage === "conversation"
+    ? 90
+    : Math.max(8, Math.round((processedClips / Math.max(1, clips.length)) * 80));
   const title = processing ? "Transcribing" : isPaused ? "Paused" : isRecording ? "Recording" : clips.length ? "Recording saved" : "Ready to record";
-  const status = processing ? processingStage === "transcribing" ? `Transcribing clip ${processingClip} of ${clips.length}...` : "Preparing conversation..."
+  const status = processing ? processingStage === "transcribing" ? `Transcribed ${processedClips} of ${clips.length} clips...` : "Preparing conversation..."
     : isPaused ? "Tap resume when you're ready." : isRecording ? "Recording..." : clips.length ? "Preview your clips or record another." : "Tap the microphone to begin.";
   const progressLabel = processing ? `${processingProgress}%` : formatTime(timer);
 
@@ -146,7 +146,7 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
         processing={processing} stage={processingStage} progress={processingProgress} /></View>
       <Text style={styles.timer}>{progressLabel}</Text>
       <Text style={styles.status} accessibilityLiveRegion="polite">{status}</Text>
-      {processing && <Text style={styles.estimate}>Estimated progress</Text>}
+      {processing && <Text style={styles.estimate}>Processing progress</Text>}
       {!processing && <RecordingWaves active={isRecording && !isPaused} metering={metering} />}
       {!!recordingError && <Text accessibilityRole="alert" style={styles.error}>{recordingError}</Text>}
       <View style={styles.bottomControls}>

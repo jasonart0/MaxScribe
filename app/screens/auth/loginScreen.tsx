@@ -3,10 +3,10 @@ import { faildMessage, isNotEmpty, successMessage } from "@lib";
 import { loginUser } from "api/auth";
 import AppBackground from "components/AppBackground";
 import BlueGradient from "components/BlueGradient";
+import GradientStatusBar from "components/GradientStatusBar";
 import LoadingOverlay from "components/LoadingOverlay";
 import { COLORS } from "constants/Colors";
 import { getUserData } from "lib/authdata";
-import { preloadHome } from "lib/preload";
 import { clearSavedLogin, getSavedLogin, saveLoginCredentials, supportsSavedPassword } from "lib/savedLogin";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -15,7 +15,6 @@ import {
     KeyboardAvoidingView,
     Platform,
     Pressable,
-    StatusBar,
     StyleSheet,
     Text,
     TextInput,
@@ -94,8 +93,7 @@ export default function LoginScreen({ navigation }: any) {
       } catch { saved = false; }
       if (saved) successMessage("Login Successful", browserDeclined ? "Use your browser's password manager to save your password." : "");
       else faildMessage("Signed in, but the saved password setting could not be updated.");
-      const prepared = await preloadHome();
-      navigation.replace("Home", prepared);
+      navigation.replace("Home");
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Unable to log in right now.";
@@ -108,19 +106,22 @@ export default function LoginScreen({ navigation }: any) {
 
   return (
     <AppBackground>
+      <GradientStatusBar />
       <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "height" : undefined}
         style={styles.keyboardView}
       >
           <View style={[styles.page, isCompact && styles.pageCompact]}>
             <View style={[styles.content, isCompact && styles.contentCompact]}>
-              <Image
-                source={require("../../../assets/images/logo.png")}
-                resizeMode="contain"
-                style={[styles.logo, isCompact && styles.logoCompact]}
-              />
+              <View style={styles.brandRow}>
+                <Image
+                  source={require("../../../assets/images/brand-icon.png")}
+                  resizeMode="contain"
+                  style={[styles.logo, isCompact && styles.logoCompact]}
+                />
+                <Text style={[styles.brandName, isCompact && styles.brandNameCompact]}>MaxScribe</Text>
+              </View>
 
               <Text style={[styles.title, isCompact && styles.titleCompact]}>
                 Welcome Back
@@ -255,7 +256,7 @@ export default function LoginScreen({ navigation }: any) {
               <View style={[styles.circle, styles.circleDoctor]} />
               <View style={[styles.circle, styles.circleBottomRight]} />
               <Image
-                source={require("../../../assets/images/login-doctor.png")}
+                source={require("../../../assets/images/login-doctor-ui.png")}
                 resizeMode="contain"
                 style={styles.doctorImage}
               />
@@ -286,8 +287,11 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: "rgba(218, 239, 255, 0.60)",
   },
-  logo: { width: 168, height: 43 },
-  logoCompact: { width: 152, height: 39 },
+  brandRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  logo: { width: 43, height: 43, borderRadius: 11, overflow: "hidden" },
+  logoCompact: { width: 39, height: 39, borderRadius: 10 },
+  brandName: { color: INK, fontSize: 25, lineHeight: 31, fontWeight: "800", letterSpacing: -0.6 },
+  brandNameCompact: { fontSize: 23, lineHeight: 29 },
   title: {
     marginTop: 28,
     color: INK,

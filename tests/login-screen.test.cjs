@@ -11,7 +11,7 @@ function loginScreen(options = {}) {
     'react-native-safe-area-context': { SafeAreaView: 'SafeAreaView' },
     'components/AppBackground': 'Background',
     'components/LoadingOverlay': 'LoadingOverlay',
-    '../../../assets/images/logo.png': 1, '../../../assets/images/login-doctor.png': 2,
+    '../../../assets/images/brand-icon.png': 1, '../../../assets/images/login-doctor-ui.png': 2,
     '@lib': { isNotEmpty: (value) => !!value.trim(), faildMessage: (message) => messages.push(['error', message]), successMessage: (message, description) => messages.push(['success', message, description]) },
     'api/auth': { loginUser: async () => ({ success: true }) },
     'lib/preload': { preloadHome: options.preloadHome || (async () => ({ initialPatients: [], initialError: null })) },
@@ -50,15 +50,8 @@ test('actual password storage failure remains visible without blocking authentic
   assert.equal(state.messages.filter(([type]) => type === 'error').length, 1);
 });
 
-test('login keeps loading on its button until the patient screen has been prepared', async () => {
-  let finish;
-  const pending = new Promise((resolve) => { finish = resolve; });
-  const state = loginScreen({ preloadHome: () => pending });
-  const action = findNodes(state.render(), (node) => node.props?.placeholder === 'Password')[0].props.onSubmitEditing();
-  await new Promise((resolve) => setImmediate(resolve));
-  assert.deepEqual(state.routes, []);
-  assert.equal(findNodes(state.render(), (node) => node.type === 'LoadingOverlay').length, 1);
-  finish({ initialPatients: [{ patient_id: 1 }], initialError: null });
-  await action;
+test('successful login opens the patient screen without waiting for patient preloading', async () => {
+  const state = loginScreen();
+  await findNodes(state.render(), (node) => node.props?.placeholder === 'Password')[0].props.onSubmitEditing();
   assert.deepEqual(state.routes, ['Home']);
 });

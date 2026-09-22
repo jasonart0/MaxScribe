@@ -5,6 +5,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { fetchPatientHistory } from "api/patients";
 import AppBackground from "components/AppBackground";
 import AvatarInitials from "components/Avatar";
+import GradientStatusBar from "components/GradientStatusBar";
 import { baseURL } from "constants/base";
 import { COLORS } from "constants/Colors";
 import { usePatientImage } from "hooks/usePatientImage";
@@ -12,9 +13,9 @@ import { extractEncounters } from "lib/preload";
 import { getPatientAge } from "lib/patientAge";
 import React, { useCallback, useRef, useState } from "react";
 import {
+    ActivityIndicator,
     FlatList,
     Pressable,
-    StatusBar,
     StyleSheet,
     Text,
     View,
@@ -165,8 +166,8 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
 
   return (
     <AppBackground>
+      <GradientStatusBar />
       <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
       <View style={styles.container}>
         <HeaderTitle
           titleContent={(
@@ -210,7 +211,12 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
             </>
           }
           ListEmptyComponent={
-            loading ? null : (
+            loading ? (
+              <View style={styles.emptyState}>
+                <ActivityIndicator size="large" color={COLORS.primary} />
+                <Text style={styles.emptyText}>Loading visit history...</Text>
+              </View>
+            ) : (
               <View style={styles.emptyState}>
                 <Ionicons name="document-text-outline" size={32} color="#7EA5DA" />
                 <Text style={styles.emptyText}>

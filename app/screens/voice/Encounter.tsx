@@ -14,7 +14,6 @@ import CustomDropdown, { type DropdownItem } from "components/CustomDropDown";
 import { COLORS } from "constants/Colors";
 import { usePracticeData } from "hooks/usePracticeData";
 import { getUserData } from "lib/authdata";
-import { preloadHome } from "lib/preload";
 import React, { useEffect, useRef, useState } from "react";
 import {
     StyleSheet,
@@ -95,10 +94,9 @@ export default function AddEncounter({ route, navigation }: ScreenProps<"AddEnco
       };
       await savePatientScribeData(scribeData);
       successMessage("✅ Synced", "Encounter note synced to EHR system.");
-      const prepared = await preloadHome();
       navigation.reset({
         index: 0,
-        routes: [{ name: "Home", params: prepared }],
+        routes: [{ name: "Home" }],
       });
     } catch (err) {
       faildMessage(apiErrorMessage(err, "Unable to save the encounter. Please try again."));

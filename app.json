@@ -5,7 +5,7 @@
     "owner": "jasonart",
     "version": "1.0.1",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/adaptive-icon copy.png",
     "scheme": "maxscribe",
     "userInterfaceStyle": "automatic",
     "ios": {
@@ -21,7 +21,7 @@
         "RECORD_AUDIO"
       ],
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/adaptive-icon copy.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.maxremind.MaxScribeAI"

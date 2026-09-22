@@ -6,6 +6,7 @@ import { faildMessage } from "@lib";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
 import { getUserData } from "lib/authdata";
+import { clearPatientImageCache } from "hooks/usePatientImage";
 import AvatarInitials from "./Avatar";
 import BlueGradient from "./BlueGradient";
 
@@ -78,6 +79,7 @@ const HeaderTitle = ({ title = "", titleContent, showback = true, showlogout = t
             onPress={async () => {
               try {
                 await AsyncStorage.multiRemove(["token", "userdata"]);
+                clearPatientImageCache();
                 navigation.reset({ index: 0, routes: [{ name: "Login" }] });
               } catch {
                 faildMessage("Unable to log out. Please try again.");

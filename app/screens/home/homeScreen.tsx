@@ -1,14 +1,13 @@
 import { HeaderTitle, ScreenWrapper } from "@components";
 import { Ionicons } from "@expo/vector-icons";
-import { faildMessage } from "@lib";
 import { useFocusEffect } from "@react-navigation/native";
 import { fetchPatients, fetchPatientsByFilter, fetchPatientsbySearch } from "api/patients";
 import { apiErrorMessage } from "api/response";
 import { COLORS } from "constants/Colors";
 import { useDebounce } from "hooks/useDebounce";
-import { preloadPatientHistory } from "lib/preload";
 import React, { useCallback, useRef, useState } from "react";
 import {
+    ActivityIndicator,
     FlatList,
     StyleSheet,
     Text,
@@ -40,13 +39,16 @@ export default function HomeScreen({ navigation, route }: any) {
   const [searching, setSearching] = useState(false);
   const [patients, setPatients] = useState<Patient[]>(route?.params?.initialPatients ?? []);
   const [loadError, setLoadError] = useState<string | null>(route?.params?.initialError ?? null);
-  const [openingPatient, setOpeningPatient] = useState<string | number | null>(null);
   const openingRef = useRef(false);
   const preparedRef = useRef(route?.params?.initialPatients !== undefined);
   const requestId = useRef(0);
+  const requestController = useRef<AbortController | null>(null);
   const debouncedSearch = useDebounce(search.trim(), 500);
 
   const loadPatients = useCallback(async (query: string, target: "search" | "refresh" | "background" = "background", selectedFilter: "ALL" | "TODAY_SCHEDULED" = filterTab) => {
+    requestController.current?.abort();
+    const controller = new AbortController();
+    requestController.current = controller;
     const currentRequest = ++requestId.current;
     setLoading(true);
     setSearching(target === "search");
@@ -54,11 +56,11 @@ export default function HomeScreen({ navigation, route }: any) {
     try {
       const data = selectedFilter === "TODAY_SCHEDULED"
         ? query
-          ? await fetchPatientsbySearch(query, selectedFilter)
-          : await fetchPatientsByFilter(selectedFilter)
+          ? await fetchPatientsbySearch(query, selectedFilter, controller.signal)
+          : await fetchPatientsByFilter(selectedFilter, controller.signal)
         : query
-          ? await fetchPatientsbySearch(query)
-          : await fetchPatients();
+          ? await fetchPatientsbySearch(query, "ALL", controller.signal)
+          : await fetchPatients(controller.signal);
       if (currentRequest === requestId.current) {
         setPatients(Array.isArray(data) ? data : []);
         setLoadError(null);
@@ -77,29 +79,24 @@ export default function HomeScreen({ navigation, route }: any) {
   }, [filterTab]);
 
   useFocusEffect(useCallback(() => {
+    openingRef.current = false;
     if (preparedRef.current && !debouncedSearch) preparedRef.current = false;
     else void loadPatients(debouncedSearch, debouncedSearch ? "search" : "background", filterTab);
-    return () => { requestId.current += 1; };
+    return () => {
+      requestId.current += 1;
+      requestController.current?.abort();
+    };
   }, [debouncedSearch, filterTab, loadPatients]));
 
-  const openPatient = async (patient: Patient) => {
+  const openPatient = (patient: Patient) => {
     if (openingRef.current || patient.patient_id == null) return;
+    requestController.current?.abort();
     requestId.current += 1;
     setLoading(false);
     setSearching(false);
     setRefreshing(false);
     openingRef.current = true;
-    setOpeningPatient(patient.patient_id);
-    try {
-      const initialVisits = await preloadPatientHistory(patient.patient_id);
-      if (navigation.isFocused?.() === false) return;
-      navigation.navigate("PatientDetails", { patient, initialVisits });
-    } catch (error) {
-      faildMessage(apiErrorMessage(error, "Unable to load patient history. Please try again."));
-    } finally {
-      openingRef.current = false;
-      setOpeningPatient(null);
-    }
+    navigation.navigate("PatientDetails", { patient });
   };
 
   return (
@@ -135,8 +132,10 @@ export default function HomeScreen({ navigation, route }: any) {
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}
                 onPress={() => {
+                  if (active) return;
+                  setPatients([]);
+                  setLoadError(null);
                   setFilterTab(tab.key as "ALL" | "TODAY_SCHEDULED");
-                  void loadPatients(search.trim(), "background", tab.key as "ALL" | "TODAY_SCHEDULED");
                 }}
                 style={[styles.filterTab, active && styles.filterTabActive]}
               >
@@ -165,7 +164,12 @@ export default function HomeScreen({ navigation, route }: any) {
             ) : null
           }
           ListEmptyComponent={
-            !loading ? (
+            loading ? (
+              <View style={styles.emptyState}>
+                <ActivityIndicator size="large" color={COLORS.primary} />
+                <Text style={styles.loadingText}>Loading patients...</Text>
+              </View>
+            ) : (
               <View style={styles.emptyState}>
                 <View style={styles.emptyIcon}>
                   <Ionicons name="people-outline" size={30} color={ACCENT} />
@@ -175,15 +179,15 @@ export default function HomeScreen({ navigation, route }: any) {
                   {loadError || "Try another name, ID, or patient status."}
                 </Text>
               </View>
-            ) : null
+            )
           }
           renderItem={({ item }) => (
             <PatientCard
               patient={item}
               onCallPress={() => { if (!openingRef.current) navigation.navigate("Voice", { patient: item, autoStart: true }); }}
               onViewPress={() => openPatient(item)}
-              isLoading={openingPatient === item.patient_id}
-              disabled={openingPatient !== null}
+              isLoading={false}
+              disabled={false}
               showAppointmentInfo={filterTab === "TODAY_SCHEDULED"}
             />
           )}
@@ -278,4 +282,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 6,
   },
+  loadingText: { marginTop: 12, color: COLORS.textLight, fontSize: 13 },
 });
