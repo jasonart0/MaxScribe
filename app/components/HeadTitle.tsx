@@ -5,8 +5,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { faildMessage } from "@lib";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
-import { getUserData } from "lib/authdata";
 import { clearPatientImageCache } from "hooks/usePatientImage";
+import { getUserData } from "lib/authdata";
 import AvatarInitials from "./Avatar";
 import BlueGradient from "./BlueGradient";
 
@@ -86,7 +86,7 @@ const HeaderTitle = ({ title = "", titleContent, showback = true, showlogout = t
               }
             }}
           >
-            <Ionicons name="log-out-outline" size={23} color="#FFFFFF" />
+            <Ionicons name="power-outline" size={23} color="#FFFFFF" />
           </TouchableOpacity>
         ) : (
           <View style={styles.actionButtonRight} />
