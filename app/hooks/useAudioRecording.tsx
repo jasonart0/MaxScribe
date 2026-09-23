@@ -10,23 +10,32 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const RECORDING_KEEP_AWAKE_TAG = "MaxScribeVoiceRecording";
 
-// Speech-optimized AAC stays widely compatible with transcription services while
-// using substantially less bandwidth than Expo's 128 kbps stereo default.
+// 12 kbps mono audio is about 1.8 MB for a 20-minute visit. iOS records Opus
+// in a CAF container and browsers use WebM/Opus. Expo Audio does not expose
+// Android's native Opus encoder, so Android retains an upload-compatible AAC
+// fallback at the same speech-oriented sample rate and target bitrate.
 const compressedSpeechPreset = {
   ...RecordingPresets.LOW_QUALITY,
-  extension: ".m4a",
+  extension: ".caf",
   sampleRate: 16000,
   numberOfChannels: 1,
-  bitRate: 48000,
+  bitRate: 12000,
   android: {
     ...RecordingPresets.LOW_QUALITY.android,
     extension: ".m4a",
     outputFormat: "mpeg4" as const,
     audioEncoder: "aac" as const,
   },
+  ios: {
+    audioQuality: 0x60,
+    extension: ".caf",
+    outputFormat: "opus",
+    sampleRate: 16000,
+  },
   web: {
     ...RecordingPresets.LOW_QUALITY.web,
-    bitsPerSecond: 48000,
+    mimeType: "audio/webm;codecs=opus",
+    bitsPerSecond: 12000,
   },
 };
 

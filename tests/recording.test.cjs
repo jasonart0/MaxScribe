@@ -42,15 +42,17 @@ function recording(options = {}) {
   return { get: () => harness.render(useVoiceRecorder), calls, recorder, preset: () => preset, unmount: harness.unmount, notify: (status) => listener(status) };
 }
 
-test('recording uses a lower-quality preset to keep uploads smaller without changing the wave display', async () => {
+test('recording targets a 1.8 MB twenty-minute visit with mono 12 kbps speech audio', async () => {
   const state = recording();
   const first = state.get();
   assert.equal(await first.startRecording(), true);
   assert.deepEqual(state.preset(), {
-    extension: '.m4a', sampleRate: 16000, numberOfChannels: 1, bitRate: 48000,
+    extension: '.caf', sampleRate: 16000, numberOfChannels: 1, bitRate: 12000,
     android: { extension: '.m4a', outputFormat: 'mpeg4', audioEncoder: 'aac' },
-    web: { mimeType: 'audio/webm', bitsPerSecond: 48000 }, isMeteringEnabled: true,
+    ios: { audioQuality: 0x60, extension: '.caf', outputFormat: 'opus', sampleRate: 16000 },
+    web: { mimeType: 'audio/webm;codecs=opus', bitsPerSecond: 12000 }, isMeteringEnabled: true,
   });
+  assert.equal((12000 * 20 * 60) / 8 / 1000000, 1.8);
   assert.deepEqual(state.calls.slice(0, 4), ['permission', { allowsRecording: true, playsInSilentMode: true }, 'prepare', 'record']);
   assert.equal(state.get().isRecording, true);
   assert.equal(state.get().timer, 1);

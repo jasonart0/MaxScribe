@@ -52,6 +52,13 @@ test('saving an encounter submits the current date without showing a date select
   assert.equal(state.requests.length, 1);
   assert.ok(state.requests[0].body.date_created);
   assert.equal(state.messages.filter(([type]) => type === 'success').length, 1);
+  assert.deepEqual(state.routes, [{
+    index: 1,
+    routes: [
+      { name: 'Home' },
+      { name: 'PatientDetails', params: { patient: { patient_id: 1, name: 'Test Patient' } } },
+    ],
+  }]);
 });
 
 test('failed encounter saves keep the doctor on the form and show an error', async () => {

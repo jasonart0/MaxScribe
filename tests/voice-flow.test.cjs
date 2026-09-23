@@ -4,15 +4,16 @@ const { loadApp, hookHarness, findNodes, fakeNative } = require('./load-app.cjs'
 
 function flow(options = {}) {
   const harness = hookHarness();
-  const messages = []; const routes = []; const uploads = []; const notes = []; const backEvents = [];
+  const messages = []; const routes = []; const uploads = []; const notes = []; const backEvents = []; const listeners = [];
   const patient = { patient_id: 123, name: 'Release Test' };
   const mocks = {
     react: harness.react,
-    'react-native': { ...fakeNative, Pressable: 'Pressable', useWindowDimensions: () => ({ height: 800, width: 390 }) },
+    'react-native': { ...fakeNative, Platform: { OS: options.platform ?? 'ios' }, Pressable: 'Pressable', useWindowDimensions: () => ({ height: 800, width: 390 }) },
     '@components': { ScreenWrapper: 'Screen', CustomButton: 'Button' },
     '@expo/vector-icons': { Ionicons: 'Icon' },
     '@local-test-audio': options.localAudio ? 7 : null,
     'expo-asset': { Asset: { fromModule: () => ({ uri: 'file:///local-test-audio.mp3', downloadAsync: async () => {} }) } },
+    'expo-file-system/legacy': { getInfoAsync: async () => ({ exists: true, size: options.fileSize ?? 1572864 }) },
     '@lib': { setHeight: (value) => value, setWidth: (value) => value, faildMessage: (value) => messages.push(value) },
     'components/AnimationLoad': 'Loader', 'components/AudioPlayer': 'Player', 'components/RecordingWaveform': 'Wave',
     'components/AudioProcessingScreen': 'AudioProcessing',
@@ -32,11 +33,12 @@ function flow(options = {}) {
     navigate: (screen, params) => routes.push({ screen, params }),
     goBack: () => backEvents.push('back'),
     dispatch: (action) => backEvents.push(action),
+    addListener: (name) => { listeners.push(name); return () => {}; },
   };
   const Component = loadApp('app/screens/voice/' + (options.transcript ? 'Transcription' : 'ViceRecorder') + '.tsx', mocks).default;
   const render = () => harness.render(() => Component({ navigation, route: { params: options.transcript ? { data: { patient, transcription: 'Synthetic release test', showChat: [] } } : { patient } } }));
   const button = () => findNodes(findNodes(render(), (node) => node.type === 'Screen')[0].props.footerUnScrollable(), (node) => node.type === 'Button')[0];
-  return { render, button, messages, routes, uploads, notes, backEvents };
+  return { render, button, messages, routes, uploads, notes, backEvents, listeners };
 }
 
 global.__DEV__ = false;
@@ -64,6 +66,21 @@ test('back with a saved clip requires confirmation before leaving', async () => 
   findNodes(dialog, (node) => node.props?.accessibilityLabel === 'Discard recording')[0].props.onPress();
   await new Promise((resolve) => setImmediate(resolve));
   assert.deepEqual(state.backEvents, ['back']);
+});
+
+test('recording screen does not block later navigation resets with a discard alert', () => {
+  const state = flow();
+  state.render();
+  assert.deepEqual(state.listeners, []);
+});
+
+test('a saved recording displays its file size', async () => {
+  const state = flow({ fileSize: 1572864 });
+  await findNodes(state.render(), (node) => node.props?.accessibilityLabel === 'Stop recording')[0].props.onPress();
+  const footer = findNodes(state.render(), (node) => node.type === 'Screen')[0].props.footerUnScrollable();
+  const labels = findNodes(footer, (node) => node.type === 'Text')
+    .map((node) => node.props.children.flat(Infinity).join(''));
+  assert.ok(labels.includes('Clip 1 · 00:00:05 · 1.5 MB'));
 });
 
 test('recording Proceed uploads one clip on rapid double tap and opens its transcript', async () => {

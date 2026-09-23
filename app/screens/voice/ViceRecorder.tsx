@@ -9,13 +9,37 @@ import PlayRecordedAudio from "components/AudioPlayer";
 import RecordingMic, { RecordingBackdrop, RecordingWaves } from "components/RecordingVisual";
 import { SAMPLE_NOTE } from "constants/dummyData";
 import { Asset } from "expo-asset";
+import { getInfoAsync } from "expo-file-system/legacy";
 import { useVoiceRecorder } from "hooks/useAudioRecording";
 import * as React from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from "react-native";
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from "react-native";
 import type { ScreenProps } from "types/navigation";
 
-type Clip = { id: number; uri: string; duration: number; transcript?: string };
+type Clip = { id: number; uri: string; duration: number; size?: number; transcript?: string };
 type ProcessingStage = "sending" | "transcribing" | "conversation";
+
+async function getAudioSize(uri: string) {
+  try {
+    let size: number | undefined;
+    if (Platform.OS === "web") {
+      size = (await (await fetch(uri)).blob()).size;
+    } else {
+      const info = await getInfoAsync(uri);
+      if (!info.exists || info.isDirectory) return undefined;
+      size = info.size;
+    }
+    return Number.isFinite(size) && size >= 0 ? size : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function formatAudioSize(bytes?: number) {
+  if (bytes == null) return "Size unavailable";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Voice">) {
   const { height, width } = useWindowDimensions();
@@ -32,8 +56,6 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
   const processingRef = React.useRef(false);
   const { isRecording, isPaused, isBusy, recordingError, timer, metering, formatTime,
     startRecording, pauseRecording, resumeRecording, stopRecording } = useVoiceRecorder();
-  const allowDiscardedExit = React.useRef(false);
-  const pendingExitAction = React.useRef<Parameters<typeof navigation.dispatch>[0] | undefined>(undefined);
   const [discardDialogVisible, setDiscardDialogVisible] = React.useState(false);
   const [discarding, setDiscarding] = React.useState(false);
   const processing = loading && loadingAction === "proceed";
@@ -53,7 +75,7 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
     if (isRecording) {
       const uri = await stopRecording();
       if (uri) {
-        const clip = { id: ++clipId.current, uri, duration: timer };
+        const clip = { id: ++clipId.current, uri, duration: timer, size: await getAudioSize(uri) };
         setClips((previous) => [...previous, clip]);
       }
     } else { await startRecording(); }
@@ -65,21 +87,16 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
     try {
       if (isRecording) await stopRecording();
       setClips([]);
-      allowDiscardedExit.current = true;
       setDiscardDialogVisible(false);
-      const action = pendingExitAction.current;
-      pendingExitAction.current = undefined;
-      if (action) navigation.dispatch(action);
-      else navigation.goBack();
+      navigation.goBack();
     } finally {
       setDiscarding(false);
     }
   }, [discarding, isRecording, navigation, stopRecording]);
 
-  const confirmDiscard = React.useCallback((action?: Parameters<typeof navigation.dispatch>[0]) => {
-    pendingExitAction.current = action;
+  const confirmDiscard = React.useCallback(() => {
     setDiscardDialogVisible(true);
-  }, [navigation]);
+  }, []);
 
   const cancelRecording = React.useCallback(() => {
     if (isBusy || loading) return;
@@ -89,13 +106,6 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
     }
     confirmDiscard();
   }, [clips.length, confirmDiscard, isBusy, isRecording, loading, navigation]);
-
-  React.useEffect(() => navigation.addListener?.("beforeRemove", (event) => {
-    if (allowDiscardedExit.current || (!isRecording && !clips.length)) return;
-    event.preventDefault();
-    if (isBusy || loading) return;
-    confirmDiscard(event.data.action);
-  }), [clips.length, confirmDiscard, isBusy, isRecording, loading, navigation]);
 
   const handleProceed = async () => {
     if (!clips.length || processingRef.current) return;
@@ -178,7 +188,7 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
       await asset.downloadAsync();
       const uri = asset.localUri || asset.uri;
       if (!uri) throw new Error("Local test audio could not be loaded.");
-      setClips([{ id: ++clipId.current, uri, duration: 0 }]);
+      setClips([{ id: ++clipId.current, uri, duration: 0, size: await getAudioSize(uri) }]);
     } catch (error) {
       faildMessage(error instanceof Error ? error.message : "Local test audio could not be loaded.");
     } finally {
@@ -212,7 +222,7 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
       </View>
       <ScrollView style={{ maxHeight: isRecording ? 60 : Math.min(135, height * 0.17) }} showsVerticalScrollIndicator={false}>
         {clips.map((clip, index) => <View key={clip.id} style={styles.clipCard}>
-          <View style={styles.clipHeading}><Text style={styles.clipTitle}>Clip {index + 1} · {formatTime(clip.duration)}</Text>
+          <View style={styles.clipHeading}><Text style={styles.clipTitle}>Clip {index + 1} · {formatTime(clip.duration)} · {formatAudioSize(clip.size)}</Text>
             <Pressable accessibilityRole="button" accessibilityLabel={`Delete clip ${index + 1}`} disabled={loading || isBusy || isRecording}
               hitSlop={8} onPress={() => setClips((previous) => previous.filter((item) => item.id !== clip.id))}>
               <Ionicons name="trash-outline" size={16} color="#A0FFF3" />
@@ -272,7 +282,6 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
     visible={discardDialogVisible}
     onRequestClose={() => {
       if (discarding) return;
-      pendingExitAction.current = undefined;
       setDiscardDialogVisible(false);
     }}
   >
@@ -295,7 +304,6 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
             accessibilityLabel="Keep recording"
             disabled={discarding}
             onPress={() => {
-              pendingExitAction.current = undefined;
               setDiscardDialogVisible(false);
             }}
             style={styles.keepButton}

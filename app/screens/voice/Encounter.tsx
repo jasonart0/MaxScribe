@@ -104,8 +104,11 @@ export default function AddEncounter({ route, navigation }: ScreenProps<"AddEnco
       await savePatientScribeData(scribeData);
       successMessage("✅ Synced", "Encounter note synced to EHR system.");
       navigation.reset({
-        index: 0,
-        routes: [{ name: "Home" }],
+        index: 1,
+        routes: [
+          { name: "Home" },
+          { name: "PatientDetails", params: { patient } },
+        ],
       });
     } catch (err) {
       faildMessage(apiErrorMessage(err, "Unable to save the encounter. Please try again."));

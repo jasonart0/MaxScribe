@@ -151,6 +151,10 @@ test('AI transcription preserves native file and content URIs and MIME types', a
     await uploadVoiceFile('content://media/test.wav');
     assert.equal(requests[1].options.body.get('audioFile').uri, 'content://media/test.wav');
     assert.equal(requests[1].options.body.get('audioFile').type, 'audio/wav');
+    await uploadVoiceFile('file:///visit.caf');
+    assert.deepEqual(requests[2].options.body.get('audioFile'), { uri: 'file:///visit.caf', name: 'recording.caf', type: 'audio/x-caf' });
+    await uploadVoiceFile('file:///visit.ogg');
+    assert.deepEqual(requests[3].options.body.get('audioFile'), { uri: 'file:///visit.ogg', name: 'recording.ogg', type: 'audio/ogg' });
   } finally { global.fetch = oldFetch; global.FormData = oldForm; }
 });
 
