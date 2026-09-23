@@ -47,8 +47,18 @@ async function main() {
       call('places of service', '/claim/getPracticePOSList/' + id, {}, token),
       call('locations', '/lookup/getlocationList?practice_id=' + id, {}, token),
       call('providers', '/lookup/getProviderList?practice_id=' + id, {}, token),
+      call('today scheduled patients', '/search/patient', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ param_list: [{ name: 'location_id', value: '' }, { name: 'provider_id', value: '' }], option: 'TODAY_SCHEDULED', pageIndex: 0, pageSize: 0 }) }, token),
     ]);
     const patients = calls[0].status === 'fulfilled' ? calls[0].value : [];
+    if (calls[5].status === 'fulfilled' && calls[5].value[0]) {
+      const scheduled = calls[5].value[0];
+      const normalized = (value) => typeof value === 'string' ? value.trim().toLowerCase().replace(/\s+/g, ' ') : '';
+      const scheduledResult = results.find((entry) => entry.label === 'today scheduled patients');
+      scheduledResult.providerNameMatched = calls[4].status === 'fulfilled'
+        && calls[4].value.some((provider) => normalized(provider.name) === normalized(scheduled.app_provider_name));
+      scheduledResult.locationNameMatched = calls[3].status === 'fulfilled'
+        && calls[3].value.some((location) => normalized(location.name) === normalized(scheduled.app_location_name));
+    }
     if (Array.isArray(patients) && patients[0]?.name) {
       const criterion = patients[0].name.split(/[,\s]+/).find(Boolean);
       const matches = await call('search existing patient', '/search/patient', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...patientsBody, param_list: [{ name: 'criteria', value: criterion }], criteria: criterion, pageSize: 50, option: 'DEFAULT' }) }, token);

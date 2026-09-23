@@ -260,10 +260,10 @@ export default function LoginScreen({ navigation }: any) {
                 style={styles.doctorImage}
               />
             </View>
-            <PageLoader visible={isLoading} message="Signing you in..." />
           </View>
       </KeyboardAvoidingView>
       </SafeAreaView>
+      <PageLoader visible={isLoading} message="Signing you in..." />
     </AppBackground>
   );
 }

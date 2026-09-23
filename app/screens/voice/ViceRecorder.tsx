@@ -17,6 +17,13 @@ import type { ScreenProps } from "types/navigation";
 
 type Clip = { id: number; uri: string; duration: number; size?: number; transcript?: string };
 type ProcessingStage = "sending" | "transcribing" | "conversation";
+type RecordingBitRate = 10000 | 12000 | 16000;
+
+const RECORDING_QUALITIES: { bitRate: RecordingBitRate; label: string; detail: string }[] = [
+  { bitRate: 10000, label: "10 kbps", detail: "Low" },
+  { bitRate: 12000, label: "12 kbps", detail: "Medium" },
+  { bitRate: 16000, label: "16 kbps", detail: "High" },
+];
 
 async function getAudioSize(uri: string) {
   try {
@@ -55,8 +62,10 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
   const [uploadPercent, setUploadPercent] = React.useState(0);
   const [estimatedProgress, setEstimatedProgress] = React.useState(0);
   const processingRef = React.useRef(false);
+  const [recordingBitRate, setRecordingBitRate] = React.useState<RecordingBitRate>(12000);
+  const [qualityMenuOpen, setQualityMenuOpen] = React.useState(false);
   const { isRecording, isPaused, isBusy, recordingError, timer, metering, formatTime,
-    startRecording, pauseRecording, resumeRecording, stopRecording } = useVoiceRecorder();
+    startRecording, pauseRecording, resumeRecording, stopRecording } = useVoiceRecorder(recordingBitRate);
   const [discardDialogVisible, setDiscardDialogVisible] = React.useState(false);
   const [discarding, setDiscarding] = React.useState(false);
   const allowNavigationRef = React.useRef(false);
@@ -95,7 +104,10 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
         const clip = { id: ++clipId.current, uri, duration: timer, size: await getAudioSize(uri) };
         setClips((previous) => [...previous, clip]);
       }
-    } else { await startRecording(); }
+    } else {
+      setQualityMenuOpen(false);
+      await startRecording();
+    }
   };
 
   const discardAndLeave = React.useCallback(async () => {
@@ -223,6 +235,7 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
   };
 
   const processingProgress = Math.max(1, Math.min(99, estimatedProgress));
+  const selectedQuality = RECORDING_QUALITIES.find((quality) => quality.bitRate === recordingBitRate) ?? RECORDING_QUALITIES[1];
   const title = processing ? processingStage === "sending" ? "Sending audio" : processingStage === "transcribing" ? "Transcribing" : "Preparing transcript"
     : isPaused ? "Paused" : isRecording ? "Recording" : clips.length ? "Recording saved" : "Ready to record";
   const status = processing ? processingStage === "sending" ? `Uploading recordings · ${uploadPercent}%`
@@ -273,6 +286,43 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
       {processing && <Text style={styles.estimate}>Estimated overall progress</Text>}
       {!processing && <RecordingWaves active={isRecording && !isPaused} metering={metering} />}
       {!!recordingError && <Text accessibilityRole="alert" style={styles.error}>{recordingError}</Text>}
+      {!isRecording && !processing && !clips.length && <View style={styles.qualitySection}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Recording quality dropdown"
+          accessibilityState={{ expanded: qualityMenuOpen, disabled: isBusy || loading }}
+          disabled={isBusy || loading}
+          onPress={() => setQualityMenuOpen((open) => !open)}
+          style={[styles.qualityDropdown, qualityMenuOpen && styles.qualityDropdownOpen]}
+        >
+          <View>
+            <Text style={styles.qualityValue}>{selectedQuality.detail}</Text>
+            <Text style={styles.qualityBitRate}>{selectedQuality.label}</Text>
+          </View>
+          <Ionicons name={qualityMenuOpen ? "chevron-down" : "chevron-up"} size={20} color="#A0FFF3" />
+        </Pressable>
+        {qualityMenuOpen && <View accessibilityRole="menu" style={styles.qualityMenu}>
+          {RECORDING_QUALITIES.map((quality) => {
+            const selected = recordingBitRate === quality.bitRate;
+            return <Pressable
+              key={quality.bitRate}
+              accessibilityRole="menuitem"
+              accessibilityLabel={`${quality.detail}, ${quality.label}`}
+              onPress={() => {
+                setRecordingBitRate(quality.bitRate);
+                setQualityMenuOpen(false);
+              }}
+              style={[styles.qualityMenuItem, selected && styles.qualityMenuItemSelected]}
+            >
+              <View>
+                <Text style={[styles.qualityValue, selected && styles.qualityValueSelected]}>{quality.detail}</Text>
+                <Text style={styles.qualityBitRate}>{quality.label}</Text>
+              </View>
+              {selected && <Ionicons name="checkmark" size={20} color="#A0FFF3" />}
+            </Pressable>;
+          })}
+        </View>}
+      </View>}
       <View style={styles.bottomControls}>
         {isRecording ? <>
           <View style={styles.control}><TouchableOpacity accessibilityRole="button" accessibilityLabel={isPaused ? "Resume recording" : "Pause recording"}
@@ -376,6 +426,19 @@ const styles = StyleSheet.create({
   controlLabel: { color: "#BDE8FF", fontSize: 13 },
   stopLabel: { color: "#FFFFFF", fontSize: 13, fontWeight: "600" },
   error: { color: "#FFE3E7", textAlign: "center", fontSize: 13, marginTop: 8 },
+  qualitySection: { width: "100%", maxWidth: 320, marginTop: 12, zIndex: 5, elevation: 5 },
+  qualityDropdown: { minHeight: 58, paddingHorizontal: 16, paddingVertical: 9, borderRadius: 14, borderWidth: 1,
+    borderColor: "rgba(217,246,255,0.38)", backgroundColor: "rgba(255,255,255,0.09)", flexDirection: "row",
+    alignItems: "center", justifyContent: "space-between" },
+  qualityDropdownOpen: { borderColor: "#A0FFF3", borderBottomLeftRadius: 8, borderBottomRightRadius: 8 },
+  qualityMenu: { position: "absolute", left: 0, right: 0, bottom: 64, zIndex: 6, elevation: 8, overflow: "hidden",
+    borderRadius: 14, borderWidth: 1, borderColor: "rgba(160,255,243,0.55)", backgroundColor: "rgba(25,104,171,0.98)" },
+  qualityMenuItem: { minHeight: 54, paddingHorizontal: 16, paddingVertical: 8, flexDirection: "row", alignItems: "center",
+    justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: "rgba(217,246,255,0.14)" },
+  qualityMenuItemSelected: { backgroundColor: "rgba(160,255,243,0.12)" },
+  qualityValue: { color: "#E8F8FF", fontSize: 14, fontWeight: "600" },
+  qualityValueSelected: { color: "#FFFFFF" },
+  qualityBitRate: { color: "#BDE8FF", fontSize: 11, marginTop: 2 },
   footer: { gap: 9, paddingBottom: 4 },
   clipsHeading: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   clipsTitle: { color: "#FFFFFF", fontSize: 15, fontWeight: "600" },

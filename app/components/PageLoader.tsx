@@ -9,7 +9,6 @@ type PageLoaderProps = {
 
 export default function PageLoader({ visible = false, message = "Please wait..." }: PageLoaderProps) {
   const [pulse] = useState(() => new Animated.Value(0));
-  const [rotation] = useState(() => new Animated.Value(0));
   const [drift] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
@@ -19,7 +18,6 @@ export default function PageLoader({ visible = false, message = "Please wait..."
         Animated.timing(pulse, { toValue: 1, duration: 1100, easing: Easing.inOut(Easing.ease), useNativeDriver: true, isInteraction: false }),
         Animated.timing(pulse, { toValue: 0, duration: 1100, easing: Easing.inOut(Easing.ease), useNativeDriver: true, isInteraction: false }),
       ])),
-      Animated.loop(Animated.timing(rotation, { toValue: 1, duration: 1800, easing: Easing.linear, useNativeDriver: true, isInteraction: false })),
       Animated.loop(Animated.sequence([
         Animated.timing(drift, { toValue: 1, duration: 3600, easing: Easing.inOut(Easing.ease), useNativeDriver: true, isInteraction: false }),
         Animated.timing(drift, { toValue: 0, duration: 3600, easing: Easing.inOut(Easing.ease), useNativeDriver: true, isInteraction: false }),
@@ -27,7 +25,7 @@ export default function PageLoader({ visible = false, message = "Please wait..."
     ]);
     animation.start();
     return () => animation.stop();
-  }, [drift, pulse, rotation, visible]);
+  }, [drift, pulse, visible]);
 
   if (!visible) return null;
 
@@ -58,11 +56,6 @@ export default function PageLoader({ visible = false, message = "Please wait..."
             transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.86, 1.3] }) }],
           }]} />
           <View style={styles.innerRing} />
-          <Animated.View style={[styles.orbit, {
-            transform: [{ rotate: rotation.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"] }) }],
-          }]}>
-            <View style={styles.orbitDot} />
-          </Animated.View>
           <ActivityIndicator size="large" color="#FFFFFF" />
         </View>
         <Text style={styles.message}>{message}</Text>
@@ -125,25 +118,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(233,249,255,0.34)",
     backgroundColor: "rgba(255,255,255,0.08)",
-  },
-  orbit: {
-    position: "absolute",
-    width: 94,
-    height: 94,
-    borderRadius: 47,
-  },
-  orbitDot: {
-    position: "absolute",
-    top: 1,
-    left: 43,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#A0FFF3",
-    shadowColor: "#A0FFF3",
-    shadowOpacity: 0.9,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 0 },
   },
   message: {
     marginTop: 22,

@@ -61,7 +61,7 @@ test('saving an encounter submits the current date without showing a date select
   }]);
 });
 
-test('scheduled provider and location stay hidden and are saved with the encounter', async () => {
+test('scheduled provider and location names are prefilled and their IDs are saved', async () => {
   const practiceData = {
     providerList: [{ label: 'Scheduled Doctor', value: { id: 22 } }],
     locationList: [{ label: 'Scheduled Clinic', value: { id: 33 } }],
@@ -69,13 +69,13 @@ test('scheduled provider and location stay hidden and are saved with the encount
     loading: false,
     error: null,
   };
-  const state = screen('Encounter', { encounterDefaults: { providerId: '22', locationId: '33' }, practiceData });
+  const state = screen('Encounter', { encounterDefaults: { providerName: 'Scheduled Doctor', locationName: 'Scheduled Clinic' }, practiceData });
   let tree = state.render();
   const dropdowns = findNodes(tree, (node) => node.type === 'Dropdown');
-  assert.equal(dropdowns.length, 1);
-  assert.equal(findNodes(tree, (node) => node.type === 'Text' && node.props.children.includes('Care provider')).length, 0);
-  assert.equal(findNodes(tree, (node) => node.type === 'Text' && node.props.children.includes('Location')).length, 0);
-  dropdowns[0].props.onSelect(practiceData.posList[0]);
+  assert.equal(dropdowns.length, 3);
+  assert.equal(dropdowns[0].props.selectedValue.label, 'Scheduled Doctor');
+  assert.equal(dropdowns[1].props.selectedValue.label, 'Scheduled Clinic');
+  dropdowns[2].props.onSelect(practiceData.posList[0]);
   tree = state.render();
   footerButton(tree).props.onPress();
   tree = state.render();

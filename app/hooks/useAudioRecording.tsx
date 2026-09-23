@@ -6,19 +6,19 @@ import {
     useAudioRecorderState,
 } from "expo-audio";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const RECORDING_KEEP_AWAKE_TAG = "MaxScribeVoiceRecording";
 
 // Mono AAC/M4A is accepted reliably by the transcription backend. The previous
 // iOS Opus-in-CAF output played locally but the server could not decode it and
 // returned an empty transcript.
-const compressedSpeechPreset = {
+const createCompressedSpeechPreset = (bitRate: number) => ({
   ...RecordingPresets.LOW_QUALITY,
   extension: ".m4a",
   sampleRate: 16000,
   numberOfChannels: 1,
-  bitRate: 48000,
+  bitRate,
   android: {
     ...RecordingPresets.LOW_QUALITY.android,
     extension: ".m4a",
@@ -34,11 +34,11 @@ const compressedSpeechPreset = {
   },
   web: {
     ...RecordingPresets.LOW_QUALITY.web,
-    bitsPerSecond: 48000,
+    bitsPerSecond: bitRate,
   },
-};
+});
 
-export const useVoiceRecorder = () => {
+export const useVoiceRecorder = (bitRate = 48000) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
@@ -46,10 +46,11 @@ export const useVoiceRecorder = () => {
   const [completedDuration, setCompletedDuration] = useState(0);
   const busyRef = useRef(false);
   const sessionRef = useRef(false);
-  const recorder = useAudioRecorder({
-    ...compressedSpeechPreset,
+  const recordingOptions = useMemo(() => ({
+    ...createCompressedSpeechPreset(bitRate),
     isMeteringEnabled: true, // Read microphone levels for the visual waves only.
-  }, (status) => {
+  }), [bitRate]);
+  const recorder = useAudioRecorder(recordingOptions, (status) => {
     if (status.hasError || status.mediaServicesDidReset) {
       sessionRef.current = false;
       setIsRecording(false);

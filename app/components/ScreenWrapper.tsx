@@ -33,9 +33,9 @@ export default function ScreenWrapper({children, title, showback = true, scrollE
       showsVerticalScrollIndicator={false} onTouchEnd={onTouchEnd}>{children}</KeyboardAwareScrollView> : children}
    </View>
    {footer != null && footer !== false && <View style={styles.footer}>{footer}</View>}
-   <PageLoader visible={loading} message={loadingMessage} />
    </View>
   </SafeAreaView>
+  <PageLoader visible={loading} message={loadingMessage} />
  </View>;
  const scene = backgroundImage ? <ImageBackground source={backgroundImage} style={styles.body} resizeMode="cover">{content}</ImageBackground> : content;
  return background ? <View style={styles.body}>{background}{scene}</View> : <AppBackground>{scene}</AppBackground>;

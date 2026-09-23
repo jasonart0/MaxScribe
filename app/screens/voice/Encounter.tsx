@@ -14,7 +14,7 @@ import CustomDropdown, { type DropdownItem } from "components/CustomDropDown";
 import { COLORS } from "constants/Colors";
 import { usePracticeData } from "hooks/usePracticeData";
 import { getUserData } from "lib/authdata";
-import { findLookupById } from "lib/scheduledEncounter";
+import { findLookupById, findLookupByName } from "lib/scheduledEncounter";
 import React, { useEffect, useRef, useState } from "react";
 import {
     StyleSheet,
@@ -55,12 +55,14 @@ export default function AddEncounter({ route, navigation }: ScreenProps<"AddEnco
   const [showConfirm, setShowConfirm] = useState(false);
   const canSelectProvider = Boolean(providerList?.length);
   const canSelectPos = Boolean(posList?.length);
-  const selectedProvider = provider ?? findLookupById(providerList, encounterDefaults?.providerId, ["provider_id", "providerId"]);
-  const selectedLocation = location ?? findLookupById(locationList, encounterDefaults?.locationId, ["location_id", "locationId"]);
+  const selectedProvider = provider
+    ?? findLookupById(providerList, encounterDefaults?.providerId, ["provider_id", "providerId"])
+    ?? findLookupByName(providerList, encounterDefaults?.providerName, ["provider_name"]);
+  const selectedLocation = location
+    ?? findLookupById(locationList, encounterDefaults?.locationId, ["location_id", "locationId"])
+    ?? findLookupByName(locationList, encounterDefaults?.locationName, ["location_name"]);
   const providerId = (selectedProvider?.value?.id ?? selectedProvider?.value?.provider_id ?? encounterDefaults?.providerId)?.toString();
   const locationId = (selectedLocation?.value?.id ?? selectedLocation?.value?.location_id ?? encounterDefaults?.locationId)?.toString();
-  const providerIsScheduled = Boolean(encounterDefaults?.providerId);
-  const locationIsScheduled = Boolean(encounterDefaults?.locationId);
 
   // Validation state
   const [errors, setErrors] = useState({
@@ -155,8 +157,7 @@ export default function AddEncounter({ route, navigation }: ScreenProps<"AddEnco
         </View>}
         <View style={styles.modalOverlay}>
           <View style={styles.formCard}>
-            {/* Scheduled appointments already own their provider and location. */}
-            {!locationIsScheduled && <TouchableOpacity
+            <TouchableOpacity
               onPress={() => locationSheetRef.current?.expand()}
               style={[
                 styles.selectorRow,
@@ -173,11 +174,11 @@ export default function AddEncounter({ route, navigation }: ScreenProps<"AddEnco
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
-            </TouchableOpacity>}
-            {!locationIsScheduled && errors.location && <Text style={styles.errorText}>Required *</Text>}
+            </TouchableOpacity>
+            {errors.location && <Text style={styles.errorText}>Required *</Text>}
 
             {/* Provider */}
-            {!providerIsScheduled && <TouchableOpacity
+            <TouchableOpacity
               onPress={() => {
                 if (!canSelectProvider) return;
                 providerSheetRef.current?.expand();
@@ -199,8 +200,8 @@ export default function AddEncounter({ route, navigation }: ScreenProps<"AddEnco
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={canSelectProvider ? COLORS.primary : COLORS.border} />
-            </TouchableOpacity>}
-            {!providerIsScheduled && errors.provider && (
+            </TouchableOpacity>
+            {errors.provider && (
               <Text style={styles.errorText}>Required *</Text>
             )}
 
@@ -235,7 +236,7 @@ export default function AddEncounter({ route, navigation }: ScreenProps<"AddEnco
       </View>
 
       {/* Dropdowns */}
-      {!providerIsScheduled && <CustomDropdown
+      <CustomDropdown
         data={providerList}
         selectedValue={selectedProvider}
         onSelect={(val) => {
@@ -243,8 +244,8 @@ export default function AddEncounter({ route, navigation }: ScreenProps<"AddEnco
           setErrors((prev) => ({ ...prev, provider: false }));
         }}
         bottomSheetRef={providerSheetRef}
-      />}
-      {!locationIsScheduled && <CustomDropdown
+      />
+      <CustomDropdown
         data={locationList}
         selectedValue={selectedLocation}
         onSelect={(val) => {
@@ -252,7 +253,7 @@ export default function AddEncounter({ route, navigation }: ScreenProps<"AddEnco
           setErrors((prev) => ({ ...prev, location: false }));
         }}
         bottomSheetRef={locationSheetRef}
-      />}
+      />
       <CustomDropdown
         data={posList}
         selectedValue={pos}

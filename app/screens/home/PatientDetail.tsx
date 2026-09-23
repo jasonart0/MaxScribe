@@ -231,9 +231,9 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
             onPress={() => navigation.navigate("Voice", { patient })}
           />
         </View>
-        <PageLoader visible={loading && !refreshing} message="Loading visit history..." />
       </View>
       </SafeAreaView>
+      <PageLoader visible={loading && !refreshing} message="Loading visit history..." />
     </AppBackground>
   );
 }

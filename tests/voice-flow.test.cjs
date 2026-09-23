@@ -4,7 +4,7 @@ const { loadApp, hookHarness, findNodes, fakeNative } = require('./load-app.cjs'
 
 function flow(options = {}) {
   const harness = hookHarness();
-  const messages = []; const routes = []; const uploads = []; const notes = []; const backEvents = []; const listeners = [];
+  const messages = []; const routes = []; const uploads = []; const notes = []; const backEvents = []; const listeners = []; const recorderBitRates = [];
   const patient = { patient_id: 123, name: 'Release Test' };
   const mocks = {
     react: harness.react,
@@ -18,7 +18,8 @@ function flow(options = {}) {
     'components/AnimationLoad': 'Loader', 'components/AudioPlayer': 'Player', 'components/RecordingWaveform': 'Wave',
     'components/AudioProcessingScreen': 'AudioProcessing',
     'components/RecordingVisual': { __esModule: true, default: 'RecordingMic', RecordingBackdrop: 'Backdrop', RecordingWaves: 'Waves' },
-    'hooks/useAudioRecording': { useVoiceRecorder: () => {
+    'hooks/useAudioRecording': { useVoiceRecorder: (bitRate) => {
+      recorderBitRates.push(bitRate);
       const [isRecording, setRecording] = harness.react.useState(options.initialRecording ?? true);
       return { isRecording, timer: 5, formatTime: () => '00:00:05', startRecording: async () => setRecording(true),
         stopRecording: async () => { setRecording(false); return 'file:///release-test.m4a'; } };
@@ -40,7 +41,7 @@ function flow(options = {}) {
     ? { data: { patient, transcription: 'Synthetic release test', showChat: [], encounterDefaults: options.encounterDefaults } }
     : { patient, encounterDefaults: options.encounterDefaults } } }));
   const button = () => findNodes(findNodes(render(), (node) => node.type === 'Screen')[0].props.footerUnScrollable(), (node) => node.type === 'Button')[0];
-  return { render, button, messages, routes, uploads, notes, backEvents, listeners };
+  return { render, button, messages, routes, uploads, notes, backEvents, listeners, recorderBitRates };
 }
 
 global.__DEV__ = false;
@@ -108,7 +109,24 @@ test('recording Proceed uploads one clip on rapid double tap and opens its trans
 
 test('production recording screen waits for Start Recording and hides local test audio', () => {
   const state = flow({ initialRecording: false, localAudio: true });
-  assert.equal(findNodes(state.render(), (node) => node.props?.accessibilityLabel === 'Start recording').length, 1);
+  let tree = state.render();
+  assert.equal(findNodes(tree, (node) => node.props?.accessibilityLabel === 'Start recording').length, 1);
+  const dropdown = findNodes(tree, (node) => node.props?.accessibilityLabel === 'Recording quality dropdown')[0];
+  assert.equal(dropdown.props.accessibilityState.expanded, false);
+  assert.equal(findNodes(dropdown, (node) => node.type === 'Text' && node.props.children.includes('Medium')).length, 1);
+  dropdown.props.onPress();
+  tree = state.render();
+  assert.equal(findNodes(tree, (node) => node.props?.accessibilityLabel === 'Recording quality dropdown')[0].props.accessibilityState.expanded, true);
+  const qualityMenu = findNodes(tree, (node) => node.props?.accessibilityRole === 'menu')[0];
+  assert.equal(qualityMenu.props.style.position, 'absolute');
+  assert.ok(qualityMenu.props.style.bottom > 0);
+  assert.equal(findNodes(tree, (node) => node.props?.accessibilityLabel === 'Low, 10 kbps').length, 1);
+  assert.equal(findNodes(tree, (node) => node.props?.accessibilityLabel === 'Medium, 12 kbps').length, 1);
+  assert.equal(findNodes(tree, (node) => node.props?.accessibilityLabel === 'High, 16 kbps').length, 1);
+  findNodes(tree, (node) => node.props?.accessibilityLabel === 'Low, 10 kbps')[0].props.onPress();
+  tree = state.render();
+  assert.equal(findNodes(tree, (node) => node.props?.accessibilityLabel === 'Recording quality dropdown')[0].props.accessibilityState.expanded, false);
+  assert.equal(state.recorderBitRates.at(-1), 10000);
   assert.equal(findNodes(state.render(), (node) => node.props?.accessibilityLabel === 'Use local test audio').length, 0);
 });
 
