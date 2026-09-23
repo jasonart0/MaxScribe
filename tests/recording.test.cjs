@@ -30,7 +30,15 @@ function recording(options = {}) {
     useAudioRecorder(value, callback) { preset = value; listener = callback; return recorder; },
     useAudioRecorderState() { return { durationMillis: duration, metering: -20 }; },
   };
-  const { useVoiceRecorder } = loadApp('app/hooks/useAudioRecording.tsx', { react: harness.react, 'expo-audio': expo });
+  const keepAwake = {
+    async activateKeepAwakeAsync(tag) { calls.push(['keep-awake', tag]); },
+    async deactivateKeepAwake(tag) { calls.push(['allow-sleep', tag]); },
+  };
+  const { useVoiceRecorder } = loadApp('app/hooks/useAudioRecording.tsx', {
+    react: harness.react,
+    'expo-audio': expo,
+    'expo-keep-awake': keepAwake,
+  });
   return { get: () => harness.render(useVoiceRecorder), calls, recorder, preset: () => preset, unmount: harness.unmount, notify: (status) => listener(status) };
 }
 
@@ -62,6 +70,24 @@ test('rapid double start creates one recording session', async () => {
   const state = recording();
   await Promise.all([state.get().startRecording(), state.get().startRecording()]);
   assert.equal(state.calls.filter((call) => call === 'record').length, 1);
+});
+
+test('the screen stays awake for the whole recording session and is released after stop', async () => {
+  const state = recording();
+  await state.get().startRecording();
+  state.get();
+  assert.deepEqual(state.calls.filter(Array.isArray), [['keep-awake', 'MaxScribeVoiceRecording']]);
+
+  await state.get().pauseRecording();
+  state.get();
+  assert.deepEqual(state.calls.filter(Array.isArray), [['keep-awake', 'MaxScribeVoiceRecording']]);
+
+  await state.get().stopRecording();
+  state.get();
+  assert.deepEqual(state.calls.filter(Array.isArray), [
+    ['keep-awake', 'MaxScribeVoiceRecording'],
+    ['allow-sleep', 'MaxScribeVoiceRecording'],
+  ]);
 });
 
 test('pause, resume and stop keep the recorded URI and reset the UI', async () => {

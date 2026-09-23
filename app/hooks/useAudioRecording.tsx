@@ -5,7 +5,10 @@ import {
     useAudioRecorder,
     useAudioRecorderState,
 } from "expo-audio";
+import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { useCallback, useEffect, useRef, useState } from "react";
+
+const RECORDING_KEEP_AWAKE_TAG = "MaxScribeVoiceRecording";
 
 // Speech-optimized AAC stays widely compatible with transcription services while
 // using substantially less bandwidth than Expo's 128 kbps stereo default.
@@ -47,6 +50,15 @@ export const useVoiceRecorder = () => {
     }
   });
   const recorderState = useAudioRecorderState(recorder, 100);
+
+  useEffect(() => {
+    if (!isRecording) return;
+
+    void activateKeepAwakeAsync(RECORDING_KEEP_AWAKE_TAG).catch(() => {});
+    return () => {
+      void deactivateKeepAwake(RECORDING_KEEP_AWAKE_TAG).catch(() => {});
+    };
+  }, [isRecording]);
 
   const startRecording = useCallback(async () => {
     if (busyRef.current || sessionRef.current) return false;
