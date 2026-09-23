@@ -16,7 +16,7 @@ function screen(name, options = {}) {
     'components/EditAble/DynamicEditable': 'Editor', 'components/EditAble/Richtext': 'RichEditor',
     'components/mic': 'Mic', 'components/Section': 'Section',
     'react-native-modal-datetime-picker': 'DatePicker',
-    'hooks/usePracticeData': { usePracticeData: () => ({ posList: [], providerList: [], locationList: [], loading: false, error: null }) },
+    'hooks/usePracticeData': { usePracticeData: () => options.practiceData || ({ posList: [], providerList: [], locationList: [], loading: false, error: null }) },
     'hooks/useVoice': () => ({ started: false, processing: false, error: null, results: '', finalResult: '', _destroyRecognizer: async () => {} }),
     'lib/authdata': { getUserData: async () => ({ username: 'test-doctor', practice_id: 7 }) },
     'lib/preload': {
@@ -26,10 +26,10 @@ function screen(name, options = {}) {
     './axiosInstance': { post: async (url, body) => { requests.push({ url, body }); if (options.failure) throw new Error('backend failure'); return { data: { success: true } }; } },
   };
   const Component = loadApp('app/screens/voice/' + name + '.tsx', mocks).default;
-  const patient = { patient_id: 1, name: 'Test Patient' };
-  const props = { route: { params: name === 'Notes' ? { data: { patient, jsonData: { hpi: 'Test history' }, aData: options.noEncounter ? undefined : { id: 1, provider_id: '2', location_id: '3', pos_id: '4', date_created: '2026-09-01T00:00:00.000Z' } } } : { patient, jsonData: { hpi: 'Test history' } } }, navigation: { goBack: () => routes.push('back'), reset: (value) => routes.push(value) } };
+  const patient = options.patient || { patient_id: 1, name: 'Test Patient' };
+  const props = { route: { params: name === 'Notes' ? { data: { patient, jsonData: { hpi: 'Test history' }, encounterDefaults: options.encounterDefaults, aData: options.noEncounter ? undefined : { id: 1, provider_id: '2', location_id: '3', pos_id: '4', date_created: '2026-09-01T00:00:00.000Z' } } } : { patient, jsonData: { hpi: 'Test history' }, encounterDefaults: options.encounterDefaults } }, navigation: { goBack: () => routes.push('back'), reset: (value) => routes.push(value) } };
   if (name === 'Notes' && options.generatedNote) {
-    props.route.params.data = { patient, transcription: 'Test transcript', jsonData: options.generatedNote };
+    props.route.params.data = { patient, transcription: 'Test transcript', jsonData: options.generatedNote, encounterDefaults: options.encounterDefaults };
   }
   props.navigation.navigate = (name, params) => routes.push({ name, params });
   return { render: () => harness.render(() => Component(props)), messages, requests, routes };
@@ -59,6 +59,29 @@ test('saving an encounter submits the current date without showing a date select
       { name: 'PatientDetails', params: { patient: { patient_id: 1, name: 'Test Patient' } } },
     ],
   }]);
+});
+
+test('scheduled provider and location stay hidden and are saved with the encounter', async () => {
+  const practiceData = {
+    providerList: [{ label: 'Scheduled Doctor', value: { id: 22 } }],
+    locationList: [{ label: 'Scheduled Clinic', value: { id: 33 } }],
+    posList: [{ label: 'Office', value: { id: 44 } }],
+    loading: false,
+    error: null,
+  };
+  const state = screen('Encounter', { encounterDefaults: { providerId: '22', locationId: '33' }, practiceData });
+  let tree = state.render();
+  const dropdowns = findNodes(tree, (node) => node.type === 'Dropdown');
+  assert.equal(dropdowns.length, 1);
+  assert.equal(findNodes(tree, (node) => node.type === 'Text' && node.props.children.includes('Care provider')).length, 0);
+  assert.equal(findNodes(tree, (node) => node.type === 'Text' && node.props.children.includes('Location')).length, 0);
+  dropdowns[0].props.onSelect(practiceData.posList[0]);
+  tree = state.render();
+  footerButton(tree).props.onPress();
+  tree = state.render();
+  await findNodes(tree, (node) => node.type === 'Confirm')[0].props.onConfirm();
+  assert.equal(state.requests[0].body.provider_id, '22');
+  assert.equal(state.requests[0].body.location_id, '33');
 });
 
 test('failed encounter saves keep the doctor on the form and show an error', async () => {
@@ -134,10 +157,11 @@ test('generated note preview displays rich text and updates after saving an edit
   assert.ok(textValues(state.render()).includes('Updated history'));
 });
 
-test('Send to Maximus prepares encounter options before navigating and prevents double taps', async () => {
+test('Send to Maximus carries scheduled defaults while preparing options and prevents double taps', async () => {
   let finish; let requests = 0;
   const pending = new Promise((resolve) => { finish = resolve; });
-  const state = screen('Notes', { generatedNote: { hpi: 'Ready note' }, preloadEncounter: () => { requests++; return pending; } });
+  const encounterDefaults = { providerId: '22', locationId: '33' };
+  const state = screen('Notes', { generatedNote: { hpi: 'Ready note' }, encounterDefaults, preloadEncounter: () => { requests++; return pending; } });
   const button = footerButton(state.render());
   const action = button.props.onPress();
   await button.props.onPress();
@@ -149,6 +173,7 @@ test('Send to Maximus prepares encounter options before navigating and prevents 
   await action;
   assert.equal(state.routes[0].name, 'AddEncounter');
   assert.deepEqual(state.routes[0].params.practiceLookups, lookups);
+  assert.deepEqual(state.routes[0].params.encounterDefaults, encounterDefaults);
   assert.equal(state.routes[0].params.jsonData.hpi, 'Ready note');
 });
 

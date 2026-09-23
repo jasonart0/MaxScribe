@@ -6,7 +6,6 @@ import { getPatientAge } from "lib/patientAge";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import AvatarInitials from "./Avatar";
-import LoadingOverlay from "./LoadingOverlay";
 
 type Patient = {
   name?: string;
@@ -236,7 +235,6 @@ export default function PatientCard({ patient, onViewPress, onCallPress, isLoadi
           </Text>
         </View>
       </View>
-      {isLoading && <LoadingOverlay backgroundColor={COLORS.card} color={COLORS.primary} />}
       </Pressable>
       <Pressable accessibilityRole="button" accessibilityLabel="Record patient session"
         disabled={disabled}

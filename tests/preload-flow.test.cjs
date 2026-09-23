@@ -74,3 +74,38 @@ test('rapid patient microphone taps open only one recording screen', () => {
   assert.equal(routes.length, 1);
   assert.equal(routes[0].name, 'Voice');
 });
+
+test('Today Scheduled recording carries provider and location IDs', async () => {
+  const harness = hookHarness(); const routes = [];
+  let focus;
+  const patient = { patient_id: 1, name: 'Scheduled Patient', provider_id: 22, location_id: 33 };
+  const Home = loadApp('app/screens/home/homeScreen.tsx', {
+    react: harness.react, 'react-native': fakeNative,
+    '@components': { ScreenWrapper: 'Screen', CustomButton: 'Button' },
+    '@expo/vector-icons': { Ionicons: 'Icon' },
+    '@react-navigation/native': { useFocusEffect: (callback) => { focus = callback; } },
+    'hooks/useDebounce': { useDebounce: (value) => value },
+    'api/patients': {
+      fetchPatients: async () => [],
+      fetchPatientsByFilter: async () => [patient],
+      fetchPatientsbySearch: async () => [patient],
+    },
+    '../../components/CustomSearchBar': 'Search', '../../components/PatientCard': 'Card',
+  }).default;
+  const props = { route: { params: { initialPatients: [patient] } }, navigation: { navigate: (name, params) => routes.push({ name, params }) } };
+  const render = () => harness.render(() => Home(props));
+  let tree = render();
+  const todayTab = findNodes(tree, (node) => node.type === 'TouchableOpacity')
+    .find((node) => findNodes(node, (child) => child.type === 'Text').some((child) => child.props.children.includes('Today Scheduled')));
+  todayTab.props.onPress();
+  render();
+  focus();
+  await new Promise((resolve) => setImmediate(resolve));
+  tree = render();
+  const card = findNodes(tree, (node) => node.type === 'FlatList')[0].props.renderItem({ item: patient });
+  card.props.onCallPress();
+  assert.deepEqual(routes[0], {
+    name: 'Voice',
+    params: { patient, encounterDefaults: { providerId: '22', locationId: '33' } },
+  });
+});

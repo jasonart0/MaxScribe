@@ -44,6 +44,7 @@ function formatAudioSize(bytes?: number) {
 export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Voice">) {
   const { height, width } = useWindowDimensions();
   const patient = route.params?.patient || {};
+  const encounterDefaults = route.params?.encounterDefaults;
   const [clips, setClips] = React.useState<Clip[]>([]);
   const heroSize = Math.min(clips.length ? 160 : 220, width * 0.57, height * (clips.length ? 0.19 : 0.25));
   const clipId = React.useRef(0);
@@ -182,7 +183,7 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
       // The transcript owns the completed result. Clearing local clips keeps a
       // later stack reset from being mistaken for an attempt to discard audio.
       setClips([]);
-      navigation.navigate("Transcript", { data: { patient, transcription, showChat } });
+      navigation.navigate("Transcript", { data: { patient, transcription, showChat, ...(encounterDefaults ? { encounterDefaults } : {}) } });
     } catch (error) {
       faildMessage(error instanceof Error ? error.message : "Audio transcription failed. Please try again.");
     } finally { processingRef.current = false; setLoading(false); setLoadingAction(null); }
@@ -196,7 +197,7 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
       setLoading(true);
       const showChat = await generateChat(SAMPLE_NOTE);
       if (navigation.isFocused?.() === false) return;
-      navigation.navigate("Transcript", { data: { patient, transcription: SAMPLE_NOTE, showChat } });
+      navigation.navigate("Transcript", { data: { patient, transcription: SAMPLE_NOTE, showChat, ...(encounterDefaults ? { encounterDefaults } : {}) } });
     } catch (error) { faildMessage(error instanceof Error ? error.message : "Sample processing failed. Please try again."); }
     finally { processingRef.current = false; setLoading(false); setLoadingAction(null); }
   };
@@ -232,6 +233,8 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
 
   return <>
   <ScreenWrapper title="Patient Visit" scrollEnabled background={<RecordingBackdrop />}
+    loading={loading && loadingAction !== "proceed"}
+    loadingMessage="Loading recording..."
     barStyle="light-content" statusBarColor="#2B69C1"
     headerUnScrollable={() => <View style={styles.header}>
       <Pressable accessibilityRole="button" accessibilityLabel="Go back" disabled={loading || isBusy}
@@ -256,7 +259,7 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
       </ScrollView>
       {!isRecording && <View style={styles.actions}><CustomButton title="Proceed" variant="neon" onPress={handleProceed} disabled={loading || isBusy}
         style={styles.proceed} textStyle={styles.proceedText} />
-        {__DEV__ && <CustomButton title="Load Sample" variant="neon" onPress={handleSampleload} isLoading={loading && loadingAction === "sample"}
+        {__DEV__ && <CustomButton title="Load Sample" variant="neon" onPress={handleSampleload}
           disabled={loading || isRecording} style={styles.sample} />}
       </View>}
     </View> : null}>

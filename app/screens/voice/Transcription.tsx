@@ -7,7 +7,7 @@ import { FlatList, StyleSheet, Text, View } from "react-native";
 import type { ConversationMessage, ScreenProps } from "types/navigation";
 
 export default function Transcript({ route, navigation }: ScreenProps<"Transcript">) {
-  const { patient, transcription, showChat } = route.params?.data || {};
+  const { patient, transcription, showChat, encounterDefaults } = route.params?.data || {};
   const [loading, setLoading] = React.useState(false);
   const processingRef = React.useRef(false);
   const handleProceed = async () => {
@@ -22,6 +22,7 @@ export default function Transcript({ route, navigation }: ScreenProps<"Transcrip
             patient: patient,
             transcription: transcription,
             jsonData: noteData,
+            ...(encounterDefaults ? { encounterDefaults } : {}),
           },
         });
     } catch (err) {
@@ -49,6 +50,8 @@ export default function Transcript({ route, navigation }: ScreenProps<"Transcrip
   return (
     <ScreenWrapper
       title={patient?.name}
+      loading={loading}
+      loadingMessage="Generating clinical note..."
       footerUnScrollable={() => (
         <CustomButton
           title={"Generate Note"}

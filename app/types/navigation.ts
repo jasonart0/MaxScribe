@@ -1,5 +1,6 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { PatientVisit, PracticeLookups } from "lib/preload";
+import type { EncounterDefaults } from "lib/scheduledEncounter";
 
 export type Patient = {
   patient_id?: string | number;
@@ -15,10 +16,10 @@ export type RootStackParamList = {
   Login: undefined;
   Home: { initialPatients?: Patient[]; initialError?: string | null } | undefined;
   PatientDetails: { patient: Patient; initialVisits?: PatientVisit[] };
-  Voice: { patient: Patient };
-  Transcript: { data: { patient: Patient; transcription: string; showChat?: ConversationMessage[] } };
-  Notes: { data: { patient: Patient; transcription?: string; jsonData: ClinicalNote; editAble?: boolean; id?: string | number; aData?: Record<string, any> } };
-  AddEncounter: { patient: Patient; jsonData: ClinicalNote; practiceLookups?: PracticeLookups; visitDate?: string; data?: { aData?: Record<string, any> } };
+  Voice: { patient: Patient; encounterDefaults?: EncounterDefaults };
+  Transcript: { data: { patient: Patient; transcription: string; showChat?: ConversationMessage[]; encounterDefaults?: EncounterDefaults } };
+  Notes: { data: { patient: Patient; transcription?: string; jsonData: ClinicalNote; encounterDefaults?: EncounterDefaults; editAble?: boolean; id?: string | number; aData?: Record<string, any> } };
+  AddEncounter: { patient: Patient; jsonData: ClinicalNote; encounterDefaults?: EncounterDefaults; practiceLookups?: PracticeLookups; visitDate?: string; data?: { aData?: Record<string, any> } };
 };
 export type ScreenProps<T extends keyof RootStackParamList> = NativeStackScreenProps<RootStackParamList, T>;
 

@@ -7,7 +7,14 @@ import { apiErrorMessage, assertApiSuccess, unwrapData } from "./response";
 export const getUserPracticeID = async (token) => {
   const formData = new FormData();
   formData.append("token", token);
-  const response = await axios.post("/auth/token/parse", formData, { headers: { "Content-Type": "multipart/form-data" } });
+  const isBrowser = typeof document !== "undefined";
+  const response = await axios.post("/auth/token/parse", formData, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      // Browsers must generate the multipart boundary themselves.
+      ...(!isBrowser ? { "Content-Type": "multipart/form-data" } : {}),
+    },
+  });
   assertApiSuccess(response.data);
   const data = unwrapData(response.data);
   if (data?.practice_id == null || String(data.practice_id).trim() === "") {
@@ -37,6 +44,10 @@ export const loginUser = async (username, password) => {
     return { success: true, token: data.access_token };
   } catch (error) {
     if (tokenStored) await AsyncStorage.multiRemove(["token", "userdata"]).catch(() => {});
-    return { success: false, status: error?.response?.status, message: apiErrorMessage(error, "Login failed. Check your credentials and connection.") };
+    const status = error?.response?.status;
+    const message = status === 401 && !tokenStored
+      ? "Incorrect email or password."
+      : apiErrorMessage(error, "Login failed. Check your credentials and connection.");
+    return { success: false, status, message };
   }
 };

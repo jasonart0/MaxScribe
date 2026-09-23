@@ -10,16 +10,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const RECORDING_KEEP_AWAKE_TAG = "MaxScribeVoiceRecording";
 
-// 12 kbps mono audio is about 1.8 MB for a 20-minute visit. iOS records Opus
-// in a CAF container and browsers use WebM/Opus. Expo Audio does not expose
-// Android's native Opus encoder, so Android retains an upload-compatible AAC
-// fallback at the same speech-oriented sample rate and target bitrate.
+// Mono AAC/M4A is accepted reliably by the transcription backend. The previous
+// iOS Opus-in-CAF output played locally but the server could not decode it and
+// returned an empty transcript.
 const compressedSpeechPreset = {
   ...RecordingPresets.LOW_QUALITY,
-  extension: ".caf",
+  extension: ".m4a",
   sampleRate: 16000,
   numberOfChannels: 1,
-  bitRate: 12000,
+  bitRate: 48000,
   android: {
     ...RecordingPresets.LOW_QUALITY.android,
     extension: ".m4a",
@@ -27,15 +26,15 @@ const compressedSpeechPreset = {
     audioEncoder: "aac" as const,
   },
   ios: {
-    audioQuality: 0x60,
-    extension: ".caf",
-    outputFormat: "opus",
+    ...RecordingPresets.LOW_QUALITY.ios,
+    audioQuality: 0x40,
+    extension: ".m4a",
+    outputFormat: "aac ",
     sampleRate: 16000,
   },
   web: {
     ...RecordingPresets.LOW_QUALITY.web,
-    mimeType: "audio/webm;codecs=opus",
-    bitsPerSecond: 12000,
+    bitsPerSecond: 48000,
   },
 };
 

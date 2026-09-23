@@ -2,7 +2,6 @@ import { COLORS } from 'constants/Colors';
 import { THEME } from 'constants/Theme';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
-import LoadingOverlay from './LoadingOverlay';
 import BlueGradient from './BlueGradient';
 
 type Props = { title: string; onPress: () => void; style?: StyleProp<ViewStyle>; textStyle?: StyleProp<TextStyle>; isLoading?: boolean; disabled?: boolean; variant?: 'primary' | 'secondary' | 'neon' };
@@ -21,8 +20,6 @@ export default function CustomButton({ title, onPress, style, textStyle, isLoadi
     >
       {!secondary && !neon && <BlueGradient />}
       <Text style={[styles.text, secondary && { color: COLORS.primary }, neon && { color: '#A0FFF3' }, textStyle]}>{title}</Text>
-      {isLoading && <LoadingOverlay backgroundColor={neon ? '#07587A' : secondary ? COLORS.card : 'transparent'}
-        color={neon ? '#02DBC4' : secondary ? COLORS.primary : COLORS.card} />}
     </TouchableOpacity>
   );
 }

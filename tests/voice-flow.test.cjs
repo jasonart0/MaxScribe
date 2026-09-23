@@ -36,7 +36,9 @@ function flow(options = {}) {
     addListener: (name, callback) => { listeners.push({ name, callback }); return () => {}; },
   };
   const Component = loadApp('app/screens/voice/' + (options.transcript ? 'Transcription' : 'ViceRecorder') + '.tsx', mocks).default;
-  const render = () => harness.render(() => Component({ navigation, route: { params: options.transcript ? { data: { patient, transcription: 'Synthetic release test', showChat: [] } } : { patient } } }));
+  const render = () => harness.render(() => Component({ navigation, route: { params: options.transcript
+    ? { data: { patient, transcription: 'Synthetic release test', showChat: [], encounterDefaults: options.encounterDefaults } }
+    : { patient, encounterDefaults: options.encounterDefaults } } }));
   const button = () => findNodes(findNodes(render(), (node) => node.type === 'Screen')[0].props.footerUnScrollable(), (node) => node.type === 'Button')[0];
   return { render, button, messages, routes, uploads, notes, backEvents, listeners };
 }
@@ -155,6 +157,18 @@ test('Generate Note double tap requests one note for the selected patient', asyn
   assert.deepEqual(state.routes[0].params.data.jsonData, { hpi: 'Synthetic release test' });
 });
 
+test('scheduled encounter defaults survive recording and note generation', async () => {
+  const encounterDefaults = { providerId: '22', locationId: '33' };
+  const recording = flow({ encounterDefaults });
+  await findNodes(recording.render(), (node) => node.props?.accessibilityLabel === 'Stop recording')[0].props.onPress();
+  await recording.button().props.onPress();
+  assert.deepEqual(recording.routes[0].params.data.encounterDefaults, encounterDefaults);
+
+  const transcript = flow({ transcript: true, encounterDefaults });
+  await transcript.button().props.onPress();
+  assert.deepEqual(transcript.routes[0].params.data.encounterDefaults, encounterDefaults);
+});
+
 test('failed note generation preserves the transcript and releases retry', async () => {
   const state = flow({ transcript: true, noteFailure: true });
   await state.button().props.onPress();
@@ -165,13 +179,14 @@ test('failed note generation preserves the transcript and releases retry', async
   assert.equal(state.notes.length, 2);
 });
 
-test('AI generation keeps the transcript visible with loading only on its action button', async () => {
+test('AI generation keeps the transcript visible behind a page loader', async () => {
   let finish;
   const pending = new Promise((resolve) => { finish = resolve; });
   const state = flow({ transcript: true, notePending: pending });
   const action = state.button().props.onPress();
   assert.equal(state.button().props.isLoading, true);
   assert.equal(state.routes.length, 0);
+  assert.equal(findNodes(state.render(), (node) => node.type === 'Screen')[0].props.loading, true);
   assert.equal(findNodes(state.render(), (node) => node.type === 'Loader').length, 0);
   assert.equal(findNodes(state.render(), (node) => node.type === 'FlatList').length, 1);
   finish(); await action;

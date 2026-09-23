@@ -6,6 +6,7 @@ import { fetchPatientHistory } from "api/patients";
 import AppBackground from "components/AppBackground";
 import AvatarInitials from "components/Avatar";
 import GradientStatusBar from "components/GradientStatusBar";
+import PageLoader from "components/PageLoader";
 import { baseURL } from "constants/base";
 import { COLORS } from "constants/Colors";
 import { usePatientImage } from "hooks/usePatientImage";
@@ -13,7 +14,6 @@ import { extractEncounters } from "lib/preload";
 import { getPatientAge } from "lib/patientAge";
 import React, { useCallback, useRef, useState } from "react";
 import {
-    ActivityIndicator,
     FlatList,
     Pressable,
     StyleSheet,
@@ -211,19 +211,14 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
             </>
           }
           ListEmptyComponent={
-            loading ? (
-              <View style={styles.emptyState}>
-                <ActivityIndicator size="large" color={COLORS.primary} />
-                <Text style={styles.emptyText}>Loading visit history...</Text>
-              </View>
-            ) : (
+            !loading ? (
               <View style={styles.emptyState}>
                 <Ionicons name="document-text-outline" size={32} color="#7EA5DA" />
                 <Text style={styles.emptyText}>
                   {historyError ? "Unable to load encounters. Please try again." : "No encounters available"}
                 </Text>
               </View>
-            )
+            ) : null
           }
           renderItem={renderVisit}
           refreshing={refreshing}
@@ -236,6 +231,7 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
             onPress={() => navigation.navigate("Voice", { patient })}
           />
         </View>
+        <PageLoader visible={loading && !refreshing} message="Loading visit history..." />
       </View>
       </SafeAreaView>
     </AppBackground>

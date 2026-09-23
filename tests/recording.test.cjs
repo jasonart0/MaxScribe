@@ -22,6 +22,7 @@ function recording(options = {}) {
       LOW_QUALITY: {
         extension: '.m4a', sampleRate: 44100, numberOfChannels: 2, bitRate: 64000,
         android: { extension: '.3gp', outputFormat: '3gp', audioEncoder: 'amr_nb' },
+        ios: { audioQuality: 0, outputFormat: 'aac ' },
         web: { mimeType: 'audio/webm', bitsPerSecond: 128000 },
       },
     },
@@ -42,17 +43,17 @@ function recording(options = {}) {
   return { get: () => harness.render(useVoiceRecorder), calls, recorder, preset: () => preset, unmount: harness.unmount, notify: (status) => listener(status) };
 }
 
-test('recording targets a 1.8 MB twenty-minute visit with mono 12 kbps speech audio', async () => {
+test('recording uses transcription-compatible mono AAC audio', async () => {
   const state = recording();
   const first = state.get();
   assert.equal(await first.startRecording(), true);
   assert.deepEqual(state.preset(), {
-    extension: '.caf', sampleRate: 16000, numberOfChannels: 1, bitRate: 12000,
+    extension: '.m4a', sampleRate: 16000, numberOfChannels: 1, bitRate: 48000,
     android: { extension: '.m4a', outputFormat: 'mpeg4', audioEncoder: 'aac' },
-    ios: { audioQuality: 0x60, extension: '.caf', outputFormat: 'opus', sampleRate: 16000 },
-    web: { mimeType: 'audio/webm;codecs=opus', bitsPerSecond: 12000 }, isMeteringEnabled: true,
+    ios: { audioQuality: 0x40, extension: '.m4a', outputFormat: 'aac ', sampleRate: 16000 },
+    web: { mimeType: 'audio/webm', bitsPerSecond: 48000 }, isMeteringEnabled: true,
   });
-  assert.equal((12000 * 20 * 60) / 8 / 1000000, 1.8);
+  assert.equal((48000 * 20 * 60) / 8 / 1000000, 7.2);
   assert.deepEqual(state.calls.slice(0, 4), ['permission', { allowsRecording: true, playsInSilentMode: true }, 'prepare', 'record']);
   assert.equal(state.get().isRecording, true);
   assert.equal(state.get().timer, 1);

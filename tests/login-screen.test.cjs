@@ -10,7 +10,7 @@ function loginScreen(options = {}) {
     '@expo/vector-icons': { Ionicons: 'Icon' },
     'react-native-safe-area-context': { SafeAreaView: 'SafeAreaView' },
     'components/AppBackground': 'Background',
-    'components/LoadingOverlay': 'LoadingOverlay',
+    'components/PageLoader': 'PageLoader',
     '../../../assets/images/brand-icon.png': 1, '../../../assets/images/login-doctor-ui.png': 2,
     '@lib': { isNotEmpty: (value) => !!value.trim(), faildMessage: (message) => messages.push(['error', message]), successMessage: (message, description) => messages.push(['success', message, description]) },
     'api/auth': { loginUser: async () => ({ success: true }) },

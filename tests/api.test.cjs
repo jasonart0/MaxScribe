@@ -28,6 +28,32 @@ test('login stores the parsed user and practice, without the password', async ()
   assert.equal(storage.values.get('userdata').includes('password'), false);
 });
 
+test('web token parsing sends the fresh token and lets the browser set the multipart boundary', async () => {
+  const previousDocument = global.document;
+  global.document = {};
+  try {
+    let parseConfig;
+    const api = { async post(url, _body, config) {
+      if (url === '/auth/token') return { data: { access_token: 'fresh-token' } };
+      parseConfig = config;
+      return { data: { user_id: 42, practice_id: 7 } };
+    } };
+    const { loginUser } = loadApp('app/api/auth.js', { '@react-native-async-storage/async-storage': memoryStorage(), './axiosInstance': api });
+    assert.equal((await loginUser('test-doctor', 'test-password')).success, true);
+    assert.equal(parseConfig.headers.Authorization, 'Bearer fresh-token');
+    assert.equal(parseConfig.headers['Content-Type'], undefined);
+  } finally {
+    if (previousDocument === undefined) delete global.document;
+    else global.document = previousDocument;
+  }
+});
+
+test('login authentication rejection does not report an expired session', async () => {
+  const api = { post: async () => { throw { response: { status: 401, data: {} } }; } };
+  const { loginUser } = loadApp('app/api/auth.js', { '@react-native-async-storage/async-storage': memoryStorage(), './axiosInstance': api });
+  assert.equal((await loginUser('test', 'wrong')).message, 'Incorrect email or password.');
+});
+
 test('practice parse failure rolls back the partial login', async () => {
   const storage = memoryStorage();
   const api = { async post(url) { return url === '/auth/token' ? { data: { data: { access_token: 'test-token' } } } : { data: {} }; } };

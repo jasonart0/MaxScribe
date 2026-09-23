@@ -35,7 +35,7 @@ function formatVisitHeaderDate(value?: string) {
 }
 
 export default function Notes({ route, navigation }: ScreenProps<"Notes">) {
-  const { patient, transcription, jsonData, aData } =
+  const { patient, transcription, jsonData, aData, encounterDefaults } =
     route.params?.data || {};
   const headerTitle = formatVisitHeaderDate(aData?.date_created) || patient?.name || "Visit details";
 
@@ -57,7 +57,8 @@ export default function Notes({ route, navigation }: ScreenProps<"Notes">) {
       const practiceLookups = await preloadEncounter();
       if (navigation.isFocused?.() === false) return;
       const updatedApiResponse = sectionsToApiResponse(sections, jsonData);
-      navigation.navigate("AddEncounter", { patient, jsonData: updatedApiResponse, practiceLookups });
+      navigation.navigate("AddEncounter", { patient, jsonData: updatedApiResponse, practiceLookups,
+        ...(encounterDefaults ? { encounterDefaults } : {}) });
     } catch (error) {
       faildMessage(apiErrorMessage(error, "Unable to load encounter options. Please try again."));
     } finally {
@@ -190,6 +191,8 @@ export default function Notes({ route, navigation }: ScreenProps<"Notes">) {
     <>
       <ScreenWrapper
         title={headerTitle}
+        loading={preparing || saving}
+        loadingMessage={saving ? "Updating encounter..." : "Preparing encounter..."}
         scrollEnabled
         footerUnScrollable={() => {
           return transcription ? (

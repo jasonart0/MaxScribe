@@ -4,7 +4,7 @@ import { loginUser } from "api/auth";
 import AppBackground from "components/AppBackground";
 import BlueGradient from "components/BlueGradient";
 import GradientStatusBar from "components/GradientStatusBar";
-import LoadingOverlay from "components/LoadingOverlay";
+import PageLoader from "components/PageLoader";
 import { COLORS } from "constants/Colors";
 import { getUserData } from "lib/authdata";
 import { clearSavedLogin, getSavedLogin, saveLoginCredentials, supportsSavedPassword } from "lib/savedLogin";
@@ -240,7 +240,6 @@ export default function LoginScreen({ navigation }: any) {
                 >
                   <BlueGradient />
                   <Text style={styles.signInText}>Sign In</Text>
-                  {isLoading && <LoadingOverlay backgroundColor="transparent" color="#FFFFFF" />}
                 </Pressable>
               </View>
             </View>
@@ -261,6 +260,7 @@ export default function LoginScreen({ navigation }: any) {
                 style={styles.doctorImage}
               />
             </View>
+            <PageLoader visible={isLoading} message="Signing you in..." />
           </View>
       </KeyboardAvoidingView>
       </SafeAreaView>

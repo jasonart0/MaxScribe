@@ -4,5 +4,6 @@ export { default as CustomSelector } from "./CustomSelector";
 export { default as CustomInput } from "./CutomInput";
 export { default as HeaderTitle } from "./HeadTitle";
 export { default as PatientCard } from "./PatientCard";
+export { default as PageLoader } from "./PageLoader";
 export { default as ScreenWrapper } from "./ScreenWrapper";
 export { default as SplashScreens } from "./SplashScreens";

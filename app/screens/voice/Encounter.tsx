@@ -14,6 +14,7 @@ import CustomDropdown, { type DropdownItem } from "components/CustomDropDown";
 import { COLORS } from "constants/Colors";
 import { usePracticeData } from "hooks/usePracticeData";
 import { getUserData } from "lib/authdata";
+import { findLookupById } from "lib/scheduledEncounter";
 import React, { useEffect, useRef, useState } from "react";
 import {
     StyleSheet,
@@ -32,7 +33,7 @@ function formatVisitHeaderDate(value?: string) {
 }
 
 export default function AddEncounter({ route, navigation }: ScreenProps<"AddEncounter">) {
-  const { patient, jsonData, practiceLookups, visitDate } = route.params || {};
+  const { patient, jsonData, practiceLookups, visitDate, encounterDefaults } = route.params || {};
   const headerTitle = formatVisitHeaderDate(visitDate || route.params?.data?.aData?.date_created) || patient?.name || "Visit details";
 
   const { posList, providerList, locationList, loading, error, retry } = usePracticeData(practiceLookups);
@@ -54,6 +55,12 @@ export default function AddEncounter({ route, navigation }: ScreenProps<"AddEnco
   const [showConfirm, setShowConfirm] = useState(false);
   const canSelectProvider = Boolean(providerList?.length);
   const canSelectPos = Boolean(posList?.length);
+  const selectedProvider = provider ?? findLookupById(providerList, encounterDefaults?.providerId, ["provider_id", "providerId"]);
+  const selectedLocation = location ?? findLookupById(locationList, encounterDefaults?.locationId, ["location_id", "locationId"]);
+  const providerId = (selectedProvider?.value?.id ?? selectedProvider?.value?.provider_id ?? encounterDefaults?.providerId)?.toString();
+  const locationId = (selectedLocation?.value?.id ?? selectedLocation?.value?.location_id ?? encounterDefaults?.locationId)?.toString();
+  const providerIsScheduled = Boolean(encounterDefaults?.providerId);
+  const locationIsScheduled = Boolean(encounterDefaults?.locationId);
 
   // Validation state
   const [errors, setErrors] = useState({
@@ -73,8 +80,8 @@ export default function AddEncounter({ route, navigation }: ScreenProps<"AddEnco
 
   const validateFields = () => {
     const newErrors = {
-      provider: !provider,
-      location: !location,
+      provider: !providerId,
+      location: !locationId,
       pos: !pos,
     };
     setErrors(newErrors);
@@ -96,8 +103,8 @@ export default function AddEncounter({ route, navigation }: ScreenProps<"AddEnco
         chart_id: "",
         created_user: user.username,
         deleted: false,
-        provider_id: provider?.value?.id?.toString(),
-        location_id: location?.value?.id?.toString(),
+        provider_id: providerId,
+        location_id: locationId,
         pos_id: pos?.value?.id?.toString(),
         date_created: new Date().toISOString(),
       };
@@ -129,6 +136,8 @@ export default function AddEncounter({ route, navigation }: ScreenProps<"AddEnco
   return (
     <ScreenWrapper
       title={headerTitle}
+      loading={loading || saving}
+      loadingMessage={saving ? "Saving encounter..." : "Loading encounter options..."}
       footerUnScrollable={() => (
         <CustomButton
           title={"Save"}
@@ -146,8 +155,8 @@ export default function AddEncounter({ route, navigation }: ScreenProps<"AddEnco
         </View>}
         <View style={styles.modalOverlay}>
           <View style={styles.formCard}>
-            {/* Location */}
-            <TouchableOpacity
+            {/* Scheduled appointments already own their provider and location. */}
+            {!locationIsScheduled && <TouchableOpacity
               onPress={() => locationSheetRef.current?.expand()}
               style={[
                 styles.selectorRow,
@@ -160,15 +169,15 @@ export default function AddEncounter({ route, navigation }: ScreenProps<"AddEnco
               <View style={styles.selectorCopy}>
                 <Text style={styles.selectorTitle}>Location</Text>
                 <Text style={styles.selectorSubtitle} numberOfLines={1}>
-                  {location ? location.label : "Select location"}
+                  {selectedLocation ? selectedLocation.label : "Select location"}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
-            </TouchableOpacity>
-            {errors.location && <Text style={styles.errorText}>Required *</Text>}
+            </TouchableOpacity>}
+            {!locationIsScheduled && errors.location && <Text style={styles.errorText}>Required *</Text>}
 
             {/* Provider */}
-            <TouchableOpacity
+            {!providerIsScheduled && <TouchableOpacity
               onPress={() => {
                 if (!canSelectProvider) return;
                 providerSheetRef.current?.expand();
@@ -186,12 +195,12 @@ export default function AddEncounter({ route, navigation }: ScreenProps<"AddEnco
               <View style={styles.selectorCopy}>
                 <Text style={styles.selectorTitle}>Care provider</Text>
                 <Text style={styles.selectorSubtitle} numberOfLines={1}>
-                  {provider ? provider.label : "Select provider first"}
+                  {selectedProvider ? selectedProvider.label : "Select provider first"}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={canSelectProvider ? COLORS.primary : COLORS.border} />
-            </TouchableOpacity>
-            {errors.provider && (
+            </TouchableOpacity>}
+            {!providerIsScheduled && errors.provider && (
               <Text style={styles.errorText}>Required *</Text>
             )}
 
@@ -226,24 +235,24 @@ export default function AddEncounter({ route, navigation }: ScreenProps<"AddEnco
       </View>
 
       {/* Dropdowns */}
-      <CustomDropdown
+      {!providerIsScheduled && <CustomDropdown
         data={providerList}
-        selectedValue={provider}
+        selectedValue={selectedProvider}
         onSelect={(val) => {
           setProvider(val);
           setErrors((prev) => ({ ...prev, provider: false }));
         }}
         bottomSheetRef={providerSheetRef}
-      />
-      <CustomDropdown
+      />}
+      {!locationIsScheduled && <CustomDropdown
         data={locationList}
-        selectedValue={location}
+        selectedValue={selectedLocation}
         onSelect={(val) => {
           setLocation(val);
           setErrors((prev) => ({ ...prev, location: false }));
         }}
         bottomSheetRef={locationSheetRef}
-      />
+      />}
       <CustomDropdown
         data={posList}
         selectedValue={pos}

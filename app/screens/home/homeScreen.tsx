@@ -5,9 +5,9 @@ import { fetchPatients, fetchPatientsByFilter, fetchPatientsbySearch } from "api
 import { apiErrorMessage } from "api/response";
 import { COLORS } from "constants/Colors";
 import { useDebounce } from "hooks/useDebounce";
+import { getScheduledEncounterDefaults } from "lib/scheduledEncounter";
 import React, { useCallback, useRef, useState } from "react";
 import {
-    ActivityIndicator,
     FlatList,
     StyleSheet,
     Text,
@@ -107,7 +107,10 @@ export default function HomeScreen({ navigation, route }: any) {
     setSearching(false);
     setRefreshing(false);
     openingRef.current = true;
-    navigation.navigate("Voice", { patient });
+    const encounterDefaults = filterTab === "TODAY_SCHEDULED"
+      ? getScheduledEncounterDefaults(patient)
+      : undefined;
+    navigation.navigate("Voice", { patient, ...(encounterDefaults ? { encounterDefaults } : {}) });
   };
 
   return (
@@ -117,6 +120,8 @@ export default function HomeScreen({ navigation, route }: any) {
       backgroundColor={COLORS.background}
       barStyle="light-content"
       statusBarColor="#2B69C1"
+      loading={loading && !refreshing}
+      loadingMessage={searching ? "Searching patients..." : "Loading patients..."}
       headerUnScrollable={() => (
         <HeaderTitle title="Patients" showback={false}>
           <CustomSearchBar
@@ -175,12 +180,7 @@ export default function HomeScreen({ navigation, route }: any) {
             ) : null
           }
           ListEmptyComponent={
-            loading ? (
-              <View style={styles.emptyState}>
-                <ActivityIndicator size="large" color={COLORS.primary} />
-                <Text style={styles.loadingText}>Loading patients...</Text>
-              </View>
-            ) : (
+            !loading ? (
               <View style={styles.emptyState}>
                 <View style={styles.emptyIcon}>
                   <Ionicons name="people-outline" size={30} color={ACCENT} />
@@ -190,7 +190,7 @@ export default function HomeScreen({ navigation, route }: any) {
                   {loadError || "Try another name, ID, or patient status."}
                 </Text>
               </View>
-            )
+            ) : null
           }
           renderItem={({ item }) => (
             <PatientCard
@@ -293,5 +293,4 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 6,
   },
-  loadingText: { marginTop: 12, color: COLORS.textLight, fontSize: 13 },
 });
