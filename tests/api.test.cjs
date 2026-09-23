@@ -7,7 +7,8 @@ function loadVoice(mocks) {
   return loadApp('app/api/voice.js', { './axiosInstance': { async post(path, body, config) {
     assert.equal(config.adapter, 'xhr');
     assert.equal(config.timeout, 120000);
-    assert.equal(config.headers['Content-Type'], 'multipart/form-data');
+    if (mocks['react-native']?.Platform?.OS !== 'web') assert.equal(config.headers['Content-Type'], 'multipart/form-data');
+    config.onUploadProgress?.({ loaded: 5, total: 10, progress: 0.5 });
     const response = await global.fetch('https://ehr.maximus.care/maximuscare-ehr' + path, { ...config, body });
     const data = JSON.parse(await response.text());
     if (response.ok === false) throw { response: { status: response.status, data } };
@@ -141,7 +142,9 @@ test('AI transcription preserves native file and content URIs and MIME types', a
   global.fetch = async (url, options) => { requests.push({ url, options }); return { ok: true, text: async () => '{"data":{"text":" Test transcript "}}' }; };
   try {
     const { uploadVoiceFile } = loadVoice({ '@react-native-async-storage/async-storage': memoryStorage({ token: 'test-token' }), 'react-native': { Platform: { OS: 'ios' } } });
-    assert.equal(await uploadVoiceFile('file:///test.m4a'), 'Test transcript');
+    const progress = [];
+    assert.equal(await uploadVoiceFile('file:///test.m4a', { onUploadProgress: (value) => progress.push(value) }), 'Test transcript');
+    assert.deepEqual(progress, [0, 50, 100]);
     assert.deepEqual(requests[0].options.body.get('audioFile'), { uri: 'file:///test.m4a', name: 'recording.m4a', type: 'audio/mp4' });
     assert.match(requests[0].url, /\/ai-assistant\/transcribeAudio$/);
     assert.equal(requests[0].options.headers['Content-Type'], 'multipart/form-data');
@@ -156,7 +159,7 @@ test('web transcription uploads the recorded blob with the correct codec extensi
   global.FormData = Multipart;
   const blob = new Blob(['sample'], { type: 'audio/webm;codecs=opus' });
   let posted;
-  global.fetch = async (_, options) => options ? (posted = options, { ok: true, text: async () => '{"text":"test"}' }) : { ok: true, blob: async () => blob };
+  global.fetch = async (_, options) => options ? (posted = options, { ok: true, status: 200, text: async () => '{"text":"test"}' }) : { ok: true, blob: async () => blob };
   try {
     const { uploadVoiceFile } = loadVoice({ '@react-native-async-storage/async-storage': memoryStorage({ token: 'test-token' }), 'react-native': { Platform: { OS: 'web' } } });
     assert.equal(await uploadVoiceFile('blob:test'), 'test');

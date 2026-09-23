@@ -38,7 +38,7 @@ export function RecordingBackdrop() {
 }
 
 export default function RecordingMic({ size, active, processing, stage, progress }: {
-  size: number; active: boolean; processing: boolean; stage: "transcribing" | "conversation"; progress?: number;
+  size: number; active: boolean; processing: boolean; stage: "sending" | "transcribing" | "conversation"; progress?: number;
 }) {
   const [pulse] = useState(() => new Animated.Value(0));
   const [glow] = useState(() => new Animated.Value(1));
@@ -71,17 +71,20 @@ export default function RecordingMic({ size, active, processing, stage, progress
   </View>;
 }
 
-function TranscriptionRing({ size, stage, progress }: { size: number; stage: "transcribing" | "conversation"; progress: number }) {
-  const ringProgress = stage === "conversation" ? Math.max(progress, 94) : progress;
-  const radius = size / 2 - 8;
+function TranscriptionRing({ size, progress }: { size: number; stage: "sending" | "transcribing" | "conversation"; progress: number }) {
+  // Web can briefly report a zero/invalid viewport while it lays out. Keep all
+  // SVG attributes finite and positive so the progress ring never throws.
+  const safeSize = Number.isFinite(size) ? Math.max(24, size) : 24;
+  const ringProgress = Number.isFinite(progress) ? Math.max(0, Math.min(100, progress)) : 0;
+  const radius = Math.max(1, safeSize / 2 - 8);
   const circumference = 2 * Math.PI * radius;
   return <View style={styles.ring} accessibilityRole="progressbar" accessibilityLabel="Estimated transcription progress"
     accessibilityValue={{ min: 0, max: 100, now: ringProgress }}>
-    <Svg width={size} height={size}>
-      <Circle cx={size / 2} cy={size / 2} r={radius} stroke="#FFFFFF" strokeOpacity={0.15} strokeWidth={5} fill="none" />
-      <Circle cx={size / 2} cy={size / 2} r={radius} stroke="#D7F5FF" strokeWidth={5} fill="none" strokeLinecap="round"
+    <Svg width={safeSize} height={safeSize}>
+      <Circle cx={safeSize / 2} cy={safeSize / 2} r={radius} stroke="#FFFFFF" strokeOpacity={0.15} strokeWidth={5} fill="none" />
+      <Circle cx={safeSize / 2} cy={safeSize / 2} r={radius} stroke="#D7F5FF" strokeWidth={5} fill="none" strokeLinecap="round"
         strokeDasharray={`${circumference} ${circumference}`} strokeDashoffset={circumference * (1 - ringProgress / 100)}
-        rotation={-90} origin={`${size / 2}, ${size / 2}`} />
+        rotation={-90} origin={`${safeSize / 2}, ${safeSize / 2}`} />
     </Svg>
   </View>;
 }

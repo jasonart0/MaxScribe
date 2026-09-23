@@ -184,7 +184,7 @@ export default function HomeScreen({ navigation, route }: any) {
           renderItem={({ item }) => (
             <PatientCard
               patient={item}
-              onCallPress={() => { if (!openingRef.current) navigation.navigate("Voice", { patient: item, autoStart: true }); }}
+              onCallPress={() => { if (!openingRef.current) navigation.navigate("Voice", { patient: item }); }}
               onViewPress={() => openPatient(item)}
               isLoading={false}
               disabled={false}

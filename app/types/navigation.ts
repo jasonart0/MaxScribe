@@ -15,10 +15,10 @@ export type RootStackParamList = {
   Login: undefined;
   Home: { initialPatients?: Patient[]; initialError?: string | null } | undefined;
   PatientDetails: { patient: Patient; initialVisits?: PatientVisit[] };
-  Voice: { patient: Patient; autoStart?: boolean };
+  Voice: { patient: Patient };
   Transcript: { data: { patient: Patient; transcription: string; showChat?: ConversationMessage[] } };
   Notes: { data: { patient: Patient; transcription?: string; jsonData: ClinicalNote; editAble?: boolean; id?: string | number; aData?: Record<string, any> } };
-  AddEncounter: { patient: Patient; jsonData: ClinicalNote; practiceLookups?: PracticeLookups };
+  AddEncounter: { patient: Patient; jsonData: ClinicalNote; practiceLookups?: PracticeLookups; visitDate?: string; data?: { aData?: Record<string, any> } };
 };
 export type ScreenProps<T extends keyof RootStackParamList> = NativeStackScreenProps<RootStackParamList, T>;
 

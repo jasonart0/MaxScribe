@@ -17,7 +17,14 @@ function recording(options = {}) {
   };
   let preset;
   const expo = {
-    RecordingPresets: { HIGH_QUALITY: { extension: '.m4a', sampleRate: 44100 } },
+    RecordingPresets: {
+      HIGH_QUALITY: { extension: '.m4a', sampleRate: 44100 },
+      LOW_QUALITY: {
+        extension: '.m4a', sampleRate: 44100, numberOfChannels: 2, bitRate: 64000,
+        android: { extension: '.3gp', outputFormat: '3gp', audioEncoder: 'amr_nb' },
+        web: { mimeType: 'audio/webm', bitsPerSecond: 128000 },
+      },
+    },
     async requestRecordingPermissionsAsync() { calls.push('permission'); return { granted: options.permission !== false }; },
     async setAudioModeAsync(mode) { calls.push(mode); },
     useAudioRecorder(value, callback) { preset = value; listener = callback; return recorder; },
@@ -27,11 +34,15 @@ function recording(options = {}) {
   return { get: () => harness.render(useVoiceRecorder), calls, recorder, preset: () => preset, unmount: harness.unmount, notify: (status) => listener(status) };
 }
 
-test('recording uses the default Expo preset, metering only changes the wave display', async () => {
+test('recording uses a lower-quality preset to keep uploads smaller without changing the wave display', async () => {
   const state = recording();
   const first = state.get();
   assert.equal(await first.startRecording(), true);
-  assert.deepEqual(state.preset(), { extension: '.m4a', sampleRate: 44100, isMeteringEnabled: true });
+  assert.deepEqual(state.preset(), {
+    extension: '.m4a', sampleRate: 16000, numberOfChannels: 1, bitRate: 48000,
+    android: { extension: '.m4a', outputFormat: 'mpeg4', audioEncoder: 'aac' },
+    web: { mimeType: 'audio/webm', bitsPerSecond: 48000 }, isMeteringEnabled: true,
+  });
   assert.deepEqual(state.calls.slice(0, 4), ['permission', { allowsRecording: true, playsInSilentMode: true }, 'prepare', 'record']);
   assert.equal(state.get().isRecording, true);
   assert.equal(state.get().timer, 1);

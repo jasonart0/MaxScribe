@@ -6,6 +6,7 @@ web-build/
 .git/
 .vscode/
 .env*.local
+.local-test-assets/
 *.tsbuildinfo
 npm-debug.*
 yarn-debug.*

@@ -11,17 +11,19 @@ function flow(options = {}) {
     'react-native': { ...fakeNative, Pressable: 'Pressable', useWindowDimensions: () => ({ height: 800, width: 390 }) },
     '@components': { ScreenWrapper: 'Screen', CustomButton: 'Button' },
     '@expo/vector-icons': { Ionicons: 'Icon' },
+    '@local-test-audio': options.localAudio ? 7 : null,
+    'expo-asset': { Asset: { fromModule: () => ({ uri: 'file:///local-test-audio.mp3', downloadAsync: async () => {} }) } },
     '@lib': { setHeight: (value) => value, setWidth: (value) => value, faildMessage: (value) => messages.push(value) },
     'components/AnimationLoad': 'Loader', 'components/AudioPlayer': 'Player', 'components/RecordingWaveform': 'Wave',
     'components/AudioProcessingScreen': 'AudioProcessing',
     'components/RecordingVisual': { __esModule: true, default: 'RecordingMic', RecordingBackdrop: 'Backdrop', RecordingWaves: 'Waves' },
     'hooks/useAudioRecording': { useVoiceRecorder: () => {
-      const [isRecording, setRecording] = harness.react.useState(true);
+      const [isRecording, setRecording] = harness.react.useState(options.initialRecording ?? true);
       return { isRecording, timer: 5, formatTime: () => '00:00:05', startRecording: async () => setRecording(true),
         stopRecording: async () => { setRecording(false); return 'file:///release-test.m4a'; } };
     } },
     'api/voice': {
-      uploadVoiceFile: async (uri) => { uploads.push(uri); if (options.uploadVoiceFile) return options.uploadVoiceFile(uri, uploads.length); if (options.uploadFailure) throw new Error('Transcription failed'); if (options.uploadPending) await options.uploadPending; return options.clipTexts?.[uploads.length - 1] || 'Synthetic release test'; },
+      uploadVoiceFile: async (uri, progressOptions) => { uploads.push(uri); progressOptions?.onUploadProgress?.(35); if (options.uploadVoiceFile) return options.uploadVoiceFile(uri, uploads.length, progressOptions); if (options.uploadFailure) throw new Error('Transcription failed'); progressOptions?.onUploadProgress?.(100); if (options.uploadPending) await options.uploadPending; return options.clipTexts?.[uploads.length - 1] || 'Synthetic release test'; },
       generateChat: async () => { if (options.chatFailure) throw new Error('Conversation failed'); if (options.chatPending) await options.chatPending; return [{ speaker: 'Doctor', text: 'Synthetic release test' }]; },
       generateAINotes: async (text, id) => { notes.push({ text, id }); if (options.noteFailure) throw new Error('Notes failed'); if (options.notePending) await options.notePending; return { hpi: text }; },
     },
@@ -73,6 +75,26 @@ test('recording Proceed uploads one clip on rapid double tap and opens its trans
   assert.equal(state.routes.length, 1);
   assert.equal(state.routes[0].screen, 'Transcript');
   assert.equal(state.routes[0].params.data.transcription, 'Synthetic release test');
+});
+
+test('production recording screen waits for Start Recording and hides local test audio', () => {
+  const state = flow({ initialRecording: false, localAudio: true });
+  assert.equal(findNodes(state.render(), (node) => node.props?.accessibilityLabel === 'Start recording').length, 1);
+  assert.equal(findNodes(state.render(), (node) => node.props?.accessibilityLabel === 'Use local test audio').length, 0);
+});
+
+test('development test audio enters the normal upload and transcription flow', async () => {
+  global.__DEV__ = true;
+  try {
+    const state = flow({ localAudio: true, initialRecording: false });
+    assert.equal(findNodes(state.render(), (node) => node.props?.accessibilityLabel === 'Start recording').length, 1);
+    assert.equal(findNodes(state.render(), (node) => node.props?.accessibilityLabel === 'Use local test audio').length, 1);
+    findNodes(state.render(), (node) => node.props?.accessibilityLabel === 'Use local test audio')[0].props.onPress();
+    await new Promise((resolve) => setImmediate(resolve));
+    await state.button().props.onPress();
+    assert.deepEqual(state.uploads, ['file:///local-test-audio.mp3']);
+    assert.equal(state.routes[0].screen, 'Transcript');
+  } finally { global.__DEV__ = false; }
 });
 
 test('failed transcription retains the clip and allows retry without navigating', async () => {

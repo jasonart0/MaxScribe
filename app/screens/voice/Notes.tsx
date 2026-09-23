@@ -12,8 +12,8 @@ import {
 } from "@lib";
 import { savePatientScribeData } from "api/Encounter";
 import { apiErrorMessage } from "api/response";
-import DynamicEditor from "components/EditAble/DynamicEditable";
 import BlueGradient from "components/BlueGradient";
+import DynamicEditor from "components/EditAble/DynamicEditable";
 import EditableNote from "components/EditAble/Richtext";
 import MicPulse from "components/mic";
 import CollapsibleSection from "components/Section";
@@ -25,9 +25,19 @@ import React, { useEffect, useRef, useState } from "react";
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import type { ClinicalNote, ScreenProps } from "types/navigation";
+
+function formatVisitHeaderDate(value?: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const month = date.toLocaleString("en-US", { month: "short" }).toUpperCase();
+  return `${month} ${String(date.getDate()).padStart(2, "0")}`;
+}
+
 export default function Notes({ route, navigation }: ScreenProps<"Notes">) {
   const { patient, transcription, jsonData, aData } =
     route.params?.data || {};
+  const headerTitle = formatVisitHeaderDate(aData?.date_created) || patient?.name || "Visit details";
 
   const [sections, setSections] = useState(() => jsonData ? sectionConfig(jsonData) || [] : []);
   const isGeneratedNoteFlow = Boolean(transcription && !aData && sections.length);
@@ -179,7 +189,7 @@ export default function Notes({ route, navigation }: ScreenProps<"Notes">) {
   return (
     <>
       <ScreenWrapper
-        title={patient?.name}
+        title={headerTitle}
         scrollEnabled
         footerUnScrollable={() => {
           return transcription ? (

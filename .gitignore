@@ -33,6 +33,9 @@ yarn-error.*
 # local env files
 .env*.local
 
+# Local-only media used by development transcription checks
+.local-test-assets/
+
 # typescript
 *.tsbuildinfo
 

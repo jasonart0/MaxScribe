@@ -1,13 +1,32 @@
 import {
-  RecordingPresets,
-  requestRecordingPermissionsAsync,
-  setAudioModeAsync,
-  useAudioRecorder,
-  useAudioRecorderState,
+    RecordingPresets,
+    requestRecordingPermissionsAsync,
+    setAudioModeAsync,
+    useAudioRecorder,
+    useAudioRecorderState,
 } from "expo-audio";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-// All platforms use Expo's default recording preset and microphone input.
+// Speech-optimized AAC stays widely compatible with transcription services while
+// using substantially less bandwidth than Expo's 128 kbps stereo default.
+const compressedSpeechPreset = {
+  ...RecordingPresets.LOW_QUALITY,
+  extension: ".m4a",
+  sampleRate: 16000,
+  numberOfChannels: 1,
+  bitRate: 48000,
+  android: {
+    ...RecordingPresets.LOW_QUALITY.android,
+    extension: ".m4a",
+    outputFormat: "mpeg4" as const,
+    audioEncoder: "aac" as const,
+  },
+  web: {
+    ...RecordingPresets.LOW_QUALITY.web,
+    bitsPerSecond: 48000,
+  },
+};
+
 export const useVoiceRecorder = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -17,7 +36,7 @@ export const useVoiceRecorder = () => {
   const busyRef = useRef(false);
   const sessionRef = useRef(false);
   const recorder = useAudioRecorder({
-    ...RecordingPresets.HIGH_QUALITY,
+    ...compressedSpeechPreset,
     isMeteringEnabled: true, // Read microphone levels for the visual waves only.
   }, (status) => {
     if (status.hasError || status.mediaServicesDidReset) {

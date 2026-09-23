@@ -1,5 +1,11 @@
+const fs = require("node:fs");
+const path = require("node:path");
+
 module.exports = function (api) {
-  api.cache(true);
+  const isProduction = api.env("production");
+  // eslint-disable-next-line no-undef
+  const localTestAudio = path.resolve(__dirname, ".local-test-assets/test-recording.mp3");
+  const includeLocalTestAudio = !isProduction && process.env.EAS_BUILD !== "true" && fs.existsSync(localTestAudio);
   return {
     presets: ["babel-preset-expo"],
     plugins: [
@@ -19,6 +25,11 @@ module.exports = function (api) {
             "@config": "./app/config",
             "@context": "./app/context",
             "@hooks": "./app/hooks",
+            // Local development gets the ignored MP3; release builds and other
+            // machines resolve a safe null module, so they never need the file.
+            "@local-test-audio": includeLocalTestAudio
+              ? localTestAudio
+              : "./app/config/noLocalTestAudio.ts",
           },
         },
       ],

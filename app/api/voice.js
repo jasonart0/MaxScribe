@@ -1,6 +1,5 @@
 // Recorded audio is transcribed by the backend, never by device speech recognition.
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { baseURL } from "constants/base";
 import { Platform } from "react-native";
 import { assertApiSuccess, unwrapData } from "./response";
 import api from "./axiosInstance";
@@ -16,7 +15,7 @@ const safeParseJson = (value) => {
   }
 };
 
-const requestAssistant = async (endpoint, formData) => {
+const requestAssistant = async (endpoint, formData, options = {}) => {
   const token = await AsyncStorage.getItem("token");
   if (!token) throw new Error("Your session has expired. Please sign in again.");
 
@@ -25,30 +24,28 @@ const requestAssistant = async (endpoint, formData) => {
   let response;
   let result;
   try {
-    if (Platform.OS !== "web") {
-      // Expo 57's global fetch rejects RN file URI parts. XHR delegates these
-      // parts to native networking, which reads the file and builds the boundary.
-      const nativeResponse = await api.post(`/ai-assistant/${endpoint}`, formData, {
-        adapter: "xhr",
-        timeout: 120000,
-        signal: controller.signal,
-        headers: { Authorization: `Bearer ${token}`, Accept: "application/json", "Content-Type": "multipart/form-data" },
-      });
-      response = { ok: true, status: nativeResponse.status };
-      result = safeParseJson(nativeResponse.data);
-    } else {
-      response = await fetch(`${baseURL}/ai-assistant/${endpoint}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/json",
-          // The browser supplies the multipart boundary.
-        },
-        body: formData,
-        signal: controller.signal,
-      });
-      result = safeParseJson(await response.text());
-    }
+    // XHR supports real upload progress on native and web. It also lets native
+    // networking read file:// and content:// multipart parts that Expo fetch rejects.
+    options.onUploadProgress?.(0);
+    const apiResponse = await api.post(`/ai-assistant/${endpoint}`, formData, {
+      adapter: "xhr",
+      timeout: 120000,
+      signal: controller.signal,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+        ...(Platform.OS === "web" ? {} : { "Content-Type": "multipart/form-data" }),
+      },
+      onUploadProgress: options.onUploadProgress ? (event) => {
+        const progress = typeof event.progress === "number"
+          ? event.progress
+          : event.total ? event.loaded / event.total : 0;
+        options.onUploadProgress(Math.max(0, Math.min(100, Math.round(progress * 100))));
+      } : undefined,
+    });
+    options.onUploadProgress?.(100);
+    response = { ok: true, status: apiResponse.status };
+    result = safeParseJson(apiResponse.data);
   } catch (error) {
     if (controller.signal.aborted || error?.name === "AbortError" || error?.code === "ECONNABORTED" || error?.code === "ETIMEDOUT") throw new Error("AI processing timed out. Please try again.");
     if (error?.response) {
@@ -122,7 +119,9 @@ export const sendToAPI = async (uri, options = {}) => {
   } else {
     formData.append("audioFile", { uri, name, type: mimeTypes[fileExtension] || "audio/mp4" });
   }
-  const result = await requestAssistant("transcribeAudio", formData);
+  const result = await requestAssistant("transcribeAudio", formData, {
+    onUploadProgress: options.onUploadProgress,
+  });
   const data = safeParseJson(unwrapData(result));
   const content = safeParseJson(data?.content);
   const transcript = typeof data === "string" ? data

@@ -233,7 +233,7 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
         <View style={styles.recordingFooter}>
           <CustomButton
             title="Start Recording"
-            onPress={() => navigation.navigate("Voice", { patient, autoStart: true })}
+            onPress={() => navigation.navigate("Voice", { patient })}
           />
         </View>
       </View>

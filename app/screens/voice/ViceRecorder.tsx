@@ -1,16 +1,21 @@
 import { CustomButton, ScreenWrapper } from "@components";
 import { Ionicons } from "@expo/vector-icons";
 import { faildMessage } from "@lib";
+// Babel maps this virtual module to ignored local media only in development.
+// eslint-disable-next-line import/no-unresolved
+import localTestAudio from "@local-test-audio";
 import { generateChat, uploadVoiceFile } from "api/voice";
 import PlayRecordedAudio from "components/AudioPlayer";
 import RecordingMic, { RecordingBackdrop, RecordingWaves } from "components/RecordingVisual";
 import { SAMPLE_NOTE } from "constants/dummyData";
+import { Asset } from "expo-asset";
 import { useVoiceRecorder } from "hooks/useAudioRecording";
 import * as React from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from "react-native";
 import type { ScreenProps } from "types/navigation";
 
 type Clip = { id: number; uri: string; duration: number; transcript?: string };
+type ProcessingStage = "sending" | "transcribing" | "conversation";
 
 export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Voice">) {
   const { height, width } = useWindowDimensions();
@@ -19,25 +24,29 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
   const heroSize = Math.min(clips.length ? 160 : 220, width * 0.57, height * (clips.length ? 0.19 : 0.25));
   const clipId = React.useRef(0);
   const [loading, setLoading] = React.useState(false);
-  const [loadingAction, setLoadingAction] = React.useState<"proceed" | "sample" | null>(null);
-  const [processingStage, setProcessingStage] = React.useState<"transcribing" | "conversation">("transcribing");
+  const [loadingAction, setLoadingAction] = React.useState<"proceed" | "sample" | "local-audio" | null>(null);
+  const [processingStage, setProcessingStage] = React.useState<ProcessingStage>("sending");
   const [processedClips, setProcessedClips] = React.useState(0);
+  const [uploadPercent, setUploadPercent] = React.useState(0);
+  const [estimatedProgress, setEstimatedProgress] = React.useState(0);
   const processingRef = React.useRef(false);
   const { isRecording, isPaused, isBusy, recordingError, timer, metering, formatTime,
     startRecording, pauseRecording, resumeRecording, stopRecording } = useVoiceRecorder();
-  const autoStartHandled = React.useRef(false);
   const allowDiscardedExit = React.useRef(false);
   const pendingExitAction = React.useRef<Parameters<typeof navigation.dispatch>[0] | undefined>(undefined);
   const [discardDialogVisible, setDiscardDialogVisible] = React.useState(false);
   const [discarding, setDiscarding] = React.useState(false);
   const processing = loading && loadingAction === "proceed";
+  const localTestAvailable = __DEV__ && localTestAudio != null;
 
   React.useEffect(() => {
-    if (route.params?.autoStart && !autoStartHandled.current) {
-      autoStartHandled.current = true;
-      void startRecording();
-    }
-  }, [route.params?.autoStart, startRecording]);
+    if (!processing) return;
+    const cap = processingStage === "sending" ? 68 : processingStage === "transcribing" ? 90 : 98;
+    const interval = setInterval(() => {
+      setEstimatedProgress((current) => Math.min(cap, current + 1));
+    }, 900);
+    return () => clearInterval(interval);
+  }, [processing, processingStage]);
 
   const toggleRecording = async () => {
     if (isBusy || loading) return;
@@ -92,19 +101,39 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
     if (!clips.length || processingRef.current) return;
     processingRef.current = true;
     setLoadingAction("proceed");
-    setProcessingStage("transcribing");
+    setProcessingStage("sending");
     setProcessedClips(0);
+    setUploadPercent(0);
+    setEstimatedProgress(2);
     try {
       setLoading(true);
       const transcripts = new Array<string>(clips.length);
+      const clipUploadProgress: number[] = clips.map((clip) => clip.transcript ? 100 : 0);
+      const updateUploadProgress = (index: number, percent: number) => {
+        clipUploadProgress[index] = Math.max(clipUploadProgress[index], percent);
+        const overall = Math.round(clipUploadProgress.reduce((sum, value) => sum + value, 0) / clips.length);
+        setUploadPercent(overall);
+        setEstimatedProgress((current) => Math.max(current, Math.round(overall * 0.68)));
+        if (overall >= 100) {
+          setProcessingStage("transcribing");
+          setEstimatedProgress((current) => Math.max(current, 70));
+        }
+      };
       let nextClipIndex = 0;
       const transcribeNext = async () => {
         while (nextClipIndex < clips.length) {
           const index = nextClipIndex++;
           const clip = clips[index];
-          const text = clip.transcript ?? await uploadVoiceFile(clip.uri);
+          const text = clip.transcript ?? await uploadVoiceFile(clip.uri, {
+            onUploadProgress: (percent: number) => updateUploadProgress(index, percent),
+          });
+          updateUploadProgress(index, 100);
           transcripts[index] = text;
-          setProcessedClips((count) => count + 1);
+          setProcessedClips((count) => {
+            const completed = count + 1;
+            setEstimatedProgress((current) => Math.max(current, 70 + Math.round((completed / clips.length) * 20)));
+            return completed;
+          });
           setClips((previous) => previous.map((item) => item.id === clip.id ? { ...item, transcript: text } : item));
         }
       };
@@ -115,6 +144,7 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
       if (failedJob?.status === "rejected") throw failedJob.reason;
       const transcription = transcripts.join("\n\n");
       setProcessingStage("conversation");
+      setEstimatedProgress((current) => Math.max(current, 92));
       let showChat = [];
       try { showChat = await generateChat(transcription); }
       catch (error) { faildMessage(error instanceof Error ? error.message : "Conversation generation failed. Your transcript is still available."); }
@@ -138,11 +168,32 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
     finally { processingRef.current = false; setLoading(false); setLoadingAction(null); }
   };
 
-  const processingProgress = processingStage === "conversation"
-    ? 90
-    : Math.max(8, Math.round((processedClips / Math.max(1, clips.length)) * 80));
-  const title = processing ? "Transcribing" : isPaused ? "Paused" : isRecording ? "Recording" : clips.length ? "Recording saved" : "Ready to record";
-  const status = processing ? processingStage === "transcribing" ? `Transcribed ${processedClips} of ${clips.length} clips...` : "Preparing conversation..."
+  const handleLocalTestAudio = async () => {
+    if (!__DEV__ || localTestAudio == null || processingRef.current || isRecording) return;
+    processingRef.current = true;
+    setLoadingAction("local-audio");
+    setLoading(true);
+    try {
+      const asset = Asset.fromModule(localTestAudio);
+      await asset.downloadAsync();
+      const uri = asset.localUri || asset.uri;
+      if (!uri) throw new Error("Local test audio could not be loaded.");
+      setClips([{ id: ++clipId.current, uri, duration: 0 }]);
+    } catch (error) {
+      faildMessage(error instanceof Error ? error.message : "Local test audio could not be loaded.");
+    } finally {
+      processingRef.current = false;
+      setLoading(false);
+      setLoadingAction(null);
+    }
+  };
+
+  const processingProgress = Math.max(1, Math.min(99, estimatedProgress));
+  const title = processing ? processingStage === "sending" ? "Sending audio" : processingStage === "transcribing" ? "Transcribing" : "Preparing transcript"
+    : isPaused ? "Paused" : isRecording ? "Recording" : clips.length ? "Recording saved" : "Ready to record";
+  const status = processing ? processingStage === "sending" ? `Uploading recordings · ${uploadPercent}%`
+    : processingStage === "transcribing" ? `Transcribing audio · ${processedClips} of ${clips.length} complete`
+      : "Preparing conversation..."
     : isPaused ? "Tap resume when you're ready." : isRecording ? "Recording..." : clips.length ? "Preview your clips or record another." : "Tap the microphone to begin.";
   const progressLabel = processing ? `${processingProgress}%` : formatTime(timer);
 
@@ -183,7 +234,7 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
         processing={processing} stage={processingStage} progress={processingProgress} /></View>
       <Text style={styles.timer}>{progressLabel}</Text>
       <Text style={styles.status} accessibilityLiveRegion="polite">{status}</Text>
-      {processing && <Text style={styles.estimate}>Processing progress</Text>}
+      {processing && <Text style={styles.estimate}>Estimated overall progress</Text>}
       {!processing && <RecordingWaves active={isRecording && !isPaused} metering={metering} />}
       {!!recordingError && <Text accessibilityRole="alert" style={styles.error}>{recordingError}</Text>}
       <View style={styles.bottomControls}>
@@ -196,10 +247,23 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
             style={styles.stopButton} onPress={toggleRecording}><View style={styles.stopSquare} /></TouchableOpacity><Text style={styles.stopLabel}>Stop</Text></View>
           <View style={styles.control}><TouchableOpacity accessibilityRole="button" accessibilityLabel="Cancel recording" disabled={isBusy || loading}
             style={styles.sideButton} onPress={cancelRecording}><Ionicons name="close" size={34} color="#E8F8FF" /></TouchableOpacity><Text style={styles.controlLabel}>Cancel</Text></View>
-        </> : !clips.length ? <View style={styles.control}><TouchableOpacity accessibilityRole="button" accessibilityLabel="Start recording"
-          disabled={isBusy || loading} style={styles.stopButton} onPress={toggleRecording}><Ionicons name="mic-outline" size={32} color="#147BCB" /></TouchableOpacity>
-          <Text style={styles.stopLabel}>{isBusy ? "Starting..." : "Start Recording"}</Text></View> : null}
+        </> : !clips.length ? <>
+          {localTestAvailable && <View style={styles.control}><TouchableOpacity accessibilityRole="button" accessibilityLabel="Use local test audio"
+            disabled={isBusy || loading} style={styles.testButton} onPress={() => { void handleLocalTestAudio(); }}>
+            <Ionicons name="flask-outline" size={29} color="#E8F8FF" /></TouchableOpacity>
+            <Text style={styles.stopLabel}>{loadingAction === "local-audio" ? "Loading..." : "Test Recording"}</Text></View>}
+          <View style={styles.control}><TouchableOpacity accessibilityRole="button" accessibilityLabel="Start recording"
+            disabled={isBusy || loading} style={styles.stopButton} onPress={toggleRecording}><Ionicons name="mic-outline" size={32} color="#147BCB" /></TouchableOpacity>
+            <Text style={styles.stopLabel}>{isBusy ? "Starting..." : "Start Recording"}</Text></View>
+        </> : null}
       </View>
+      {localTestAvailable && !isRecording && clips.length > 0 && <Pressable
+        accessibilityRole="button" accessibilityLabel="Use local test audio"
+        disabled={loading || isBusy} onPress={() => { void handleLocalTestAudio(); }}
+        style={styles.localAudioButton}>
+        <Ionicons name="flask-outline" size={17} color="#D9F6FF" />
+        <Text style={styles.localAudioText}>{loadingAction === "local-audio" ? "Loading test audio..." : "Test Recording"}</Text>
+      </Pressable>}
     </View>
   </ScreenWrapper>
   <Modal
@@ -264,10 +328,14 @@ const styles = StyleSheet.create({
   timer: { color: "#FFFFFF", fontSize: 38, fontWeight: "300", fontVariant: ["tabular-nums"] },
   status: { color: "#BDE8FF", fontSize: 14, marginTop: 3, marginBottom: 4, textAlign: "center" },
   estimate: { color: "#BDE8FF", fontSize: 11, marginTop: 8 },
+  localAudioButton: { minHeight: 40, marginTop: 12, paddingHorizontal: 16, borderRadius: 20, borderWidth: 1,
+    borderColor: "rgba(217,246,255,0.45)", flexDirection: "row", gap: 7, alignItems: "center", justifyContent: "center" },
+  localAudioText: { color: "#D9F6FF", fontSize: 13, fontWeight: "600" },
   bottomControls: { flexDirection: "row", justifyContent: "space-evenly", width: "100%", alignItems: "flex-end", marginTop: "auto", paddingTop: 16, paddingBottom: 4 },
   controls: { flexDirection: "row", justifyContent: "space-evenly", width: "100%", alignItems: "center", marginTop: 12 },
   control: { alignItems: "center", gap: 8 },
   sideButton: { width: 62, height: 62, borderRadius: 31, borderWidth: 1.5, borderColor: "rgba(197,235,255,0.4)", alignItems: "center", justifyContent: "center" },
+  testButton: { width: 74, height: 74, borderRadius: 37, borderWidth: 1.5, borderColor: "rgba(217,246,255,0.65)", backgroundColor: "rgba(255,255,255,0.08)", alignItems: "center", justifyContent: "center" },
   stopButton: { width: 74, height: 74, borderRadius: 37, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center", shadowColor: "#BAEDFF", shadowOpacity: 0.6, shadowRadius: 20, shadowOffset: { width: 0, height: 0 }, elevation: 8 },
   stopSquare: { width: 22, height: 22, borderRadius: 5, backgroundColor: "#FF5367" },
   controlLabel: { color: "#BDE8FF", fontSize: 13 },

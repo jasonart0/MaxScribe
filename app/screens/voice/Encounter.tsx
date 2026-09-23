@@ -23,8 +23,17 @@ import {
 } from "react-native";
 import type { ScreenProps } from "types/navigation";
 
+function formatVisitHeaderDate(value?: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const month = date.toLocaleString("en-US", { month: "short" }).toUpperCase();
+  return `${month} ${String(date.getDate()).padStart(2, "0")}`;
+}
+
 export default function AddEncounter({ route, navigation }: ScreenProps<"AddEncounter">) {
-  const { patient, jsonData, practiceLookups } = route.params || {};
+  const { patient, jsonData, practiceLookups, visitDate } = route.params || {};
+  const headerTitle = formatVisitHeaderDate(visitDate || route.params?.data?.aData?.date_created) || patient?.name || "Visit details";
 
   const { posList, providerList, locationList, loading, error, retry } = usePracticeData(practiceLookups);
   useEffect(() => {
@@ -116,7 +125,7 @@ export default function AddEncounter({ route, navigation }: ScreenProps<"AddEnco
 
   return (
     <ScreenWrapper
-      title={patient?.name}
+      title={headerTitle}
       footerUnScrollable={() => (
         <CustomButton
           title={"Save"}
