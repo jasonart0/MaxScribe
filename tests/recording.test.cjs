@@ -63,15 +63,11 @@ test('recording uses transcription-compatible mono AAC audio', async () => {
 
 test('recording applies a selected speech bitrate on native and web', () => {
   const state = recording();
-  state.get(12000);
-  assert.equal(state.preset().bitRate, 12000);
-  assert.equal(state.preset().web.bitsPerSecond, 12000);
-  state.get(10000);
-  assert.equal(state.preset().bitRate, 10000);
-  assert.equal(state.preset().web.bitsPerSecond, 10000);
-  state.get(16000);
-  assert.equal(state.preset().bitRate, 16000);
-  assert.equal(state.preset().web.bitsPerSecond, 16000);
+  for (const bitRate of [12000, 16000, 20000, 32000]) {
+    state.get(bitRate);
+    assert.equal(state.preset().bitRate, bitRate);
+    assert.equal(state.preset().web.bitsPerSecond, bitRate);
+  }
 });
 
 test('permission denial does not start a fake recording', async () => {

@@ -17,12 +17,13 @@ import type { ScreenProps } from "types/navigation";
 
 type Clip = { id: number; uri: string; duration: number; size?: number; transcript?: string };
 type ProcessingStage = "sending" | "transcribing" | "conversation";
-type RecordingBitRate = 10000 | 12000 | 16000;
+type RecordingBitRate = 12000 | 16000 | 20000 | 32000;
 
 const RECORDING_QUALITIES: { bitRate: RecordingBitRate; label: string; detail: string }[] = [
-  { bitRate: 10000, label: "10 kbps", detail: "Low" },
-  { bitRate: 12000, label: "12 kbps", detail: "Medium" },
-  { bitRate: 16000, label: "16 kbps", detail: "High" },
+  { bitRate: 12000, label: "12 kbps", detail: "Low" },
+  { bitRate: 16000, label: "16 kbps", detail: "Medium" },
+  { bitRate: 20000, label: "20 kbps", detail: "High" },
+  { bitRate: 32000, label: "32 kbps", detail: "Max" },
 ];
 
 async function getAudioSize(uri: string) {
@@ -62,7 +63,7 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
   const [uploadPercent, setUploadPercent] = React.useState(0);
   const [estimatedProgress, setEstimatedProgress] = React.useState(0);
   const processingRef = React.useRef(false);
-  const [recordingBitRate, setRecordingBitRate] = React.useState<RecordingBitRate>(12000);
+  const [recordingBitRate, setRecordingBitRate] = React.useState<RecordingBitRate>(16000);
   const [qualityMenuOpen, setQualityMenuOpen] = React.useState(false);
   const { isRecording, isPaused, isBusy, recordingError, timer, metering, formatTime,
     startRecording, pauseRecording, resumeRecording, stopRecording } = useVoiceRecorder(recordingBitRate);

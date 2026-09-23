@@ -120,13 +120,14 @@ test('production recording screen waits for Start Recording and hides local test
   const qualityMenu = findNodes(tree, (node) => node.props?.accessibilityRole === 'menu')[0];
   assert.equal(qualityMenu.props.style.position, 'absolute');
   assert.ok(qualityMenu.props.style.bottom > 0);
-  assert.equal(findNodes(tree, (node) => node.props?.accessibilityLabel === 'Low, 10 kbps').length, 1);
-  assert.equal(findNodes(tree, (node) => node.props?.accessibilityLabel === 'Medium, 12 kbps').length, 1);
-  assert.equal(findNodes(tree, (node) => node.props?.accessibilityLabel === 'High, 16 kbps').length, 1);
-  findNodes(tree, (node) => node.props?.accessibilityLabel === 'Low, 10 kbps')[0].props.onPress();
+  assert.equal(findNodes(tree, (node) => node.props?.accessibilityLabel === 'Low, 12 kbps').length, 1);
+  assert.equal(findNodes(tree, (node) => node.props?.accessibilityLabel === 'Medium, 16 kbps').length, 1);
+  assert.equal(findNodes(tree, (node) => node.props?.accessibilityLabel === 'High, 20 kbps').length, 1);
+  assert.equal(findNodes(tree, (node) => node.props?.accessibilityLabel === 'Max, 32 kbps').length, 1);
+  findNodes(tree, (node) => node.props?.accessibilityLabel === 'Max, 32 kbps')[0].props.onPress();
   tree = state.render();
   assert.equal(findNodes(tree, (node) => node.props?.accessibilityLabel === 'Recording quality dropdown')[0].props.accessibilityState.expanded, false);
-  assert.equal(state.recorderBitRates.at(-1), 10000);
+  assert.equal(state.recorderBitRates.at(-1), 32000);
   assert.equal(findNodes(state.render(), (node) => node.props?.accessibilityLabel === 'Use local test audio').length, 0);
 });
 
