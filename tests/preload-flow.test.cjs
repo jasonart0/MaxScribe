@@ -49,3 +49,28 @@ test('patient details opens immediately and loads history on the destination scr
   assert.deepEqual(routes[0].params.patient, patient);
   assert.equal(routes[0].params.initialVisits, undefined);
 });
+
+test('rapid patient microphone taps open only one recording screen', () => {
+  const harness = hookHarness(); const routes = [];
+  let focus;
+  const Home = loadApp('app/screens/home/homeScreen.tsx', {
+    react: harness.react, 'react-native': fakeNative,
+    '@components': { ScreenWrapper: 'Screen', CustomButton: 'Button' },
+    '@expo/vector-icons': { Ionicons: 'Icon' },
+    '@react-navigation/native': { useFocusEffect: (callback) => { focus = callback; } },
+    'api/response': { apiErrorMessage: () => 'Unable to load patients.' },
+    'constants/Colors': { COLORS: { background: '#fff', primary: '#00f' } },
+    'hooks/useDebounce': { useDebounce: (value) => value },
+    'api/patients': { fetchPatients: async () => [] },
+    '../../components/CustomSearchBar': 'Search', '../../components/PatientCard': 'Card',
+  }).default;
+  const patient = { patient_id: 1, name: 'Test Patient' };
+  const props = { route: { params: { initialPatients: [patient] } }, navigation: { navigate: (name, params) => routes.push({ name, params }) } };
+  const render = () => harness.render(() => Home(props));
+  const tree = render(); focus();
+  const card = findNodes(tree, (node) => node.type === 'FlatList')[0].props.renderItem({ item: patient });
+  card.props.onCallPress();
+  card.props.onCallPress();
+  assert.equal(routes.length, 1);
+  assert.equal(routes[0].name, 'Voice');
+});

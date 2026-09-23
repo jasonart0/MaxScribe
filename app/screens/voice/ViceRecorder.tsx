@@ -58,6 +58,8 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
     startRecording, pauseRecording, resumeRecording, stopRecording } = useVoiceRecorder();
   const [discardDialogVisible, setDiscardDialogVisible] = React.useState(false);
   const [discarding, setDiscarding] = React.useState(false);
+  const allowNavigationRef = React.useRef(false);
+  const pendingNavigationActionRef = React.useRef<Parameters<typeof navigation.dispatch>[0] | null>(null);
   const processing = loading && loadingAction === "proceed";
   const localTestAvailable = __DEV__ && localTestAudio != null;
 
@@ -69,6 +71,20 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
     }, 900);
     return () => clearInterval(interval);
   }, [processing, processingStage]);
+
+  React.useEffect(() => {
+    const removeListener = navigation.addListener?.("beforeRemove", (event: any) => {
+      if (allowNavigationRef.current || (!isRecording && !clips.length)) return;
+      event.preventDefault();
+      // Processing cannot be safely cancelled halfway through an upload. The
+      // visible back control is disabled in the same state, so system back is
+      // ignored until the request finishes as well.
+      if (loading || isBusy) return;
+      pendingNavigationActionRef.current = event.data?.action ?? null;
+      setDiscardDialogVisible(true);
+    });
+    return removeListener;
+  }, [clips.length, isBusy, isRecording, loading, navigation]);
 
   const toggleRecording = async () => {
     if (isBusy || loading) return;
@@ -88,7 +104,11 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
       if (isRecording) await stopRecording();
       setClips([]);
       setDiscardDialogVisible(false);
-      navigation.goBack();
+      allowNavigationRef.current = true;
+      const pendingAction = pendingNavigationActionRef.current;
+      pendingNavigationActionRef.current = null;
+      if (pendingAction && navigation.dispatch) navigation.dispatch(pendingAction);
+      else navigation.goBack();
     } finally {
       setDiscarding(false);
     }
@@ -159,6 +179,9 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
       try { showChat = await generateChat(transcription); }
       catch (error) { faildMessage(error instanceof Error ? error.message : "Conversation generation failed. Your transcript is still available."); }
       if (navigation.isFocused?.() === false) return;
+      // The transcript owns the completed result. Clearing local clips keeps a
+      // later stack reset from being mistaken for an attempt to discard audio.
+      setClips([]);
       navigation.navigate("Transcript", { data: { patient, transcription, showChat } });
     } catch (error) {
       faildMessage(error instanceof Error ? error.message : "Audio transcription failed. Please try again.");
@@ -304,6 +327,7 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
             accessibilityLabel="Keep recording"
             disabled={discarding}
             onPress={() => {
+              pendingNavigationActionRef.current = null;
               setDiscardDialogVisible(false);
             }}
             style={styles.keepButton}

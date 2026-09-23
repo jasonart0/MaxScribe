@@ -99,6 +99,17 @@ export default function HomeScreen({ navigation, route }: any) {
     navigation.navigate("PatientDetails", { patient });
   };
 
+  const startPatientRecording = (patient: Patient) => {
+    if (openingRef.current || patient.patient_id == null) return;
+    requestController.current?.abort();
+    requestId.current += 1;
+    setLoading(false);
+    setSearching(false);
+    setRefreshing(false);
+    openingRef.current = true;
+    navigation.navigate("Voice", { patient });
+  };
+
   return (
     <ScreenWrapper
       title="Patients"
@@ -184,7 +195,7 @@ export default function HomeScreen({ navigation, route }: any) {
           renderItem={({ item }) => (
             <PatientCard
               patient={item}
-              onCallPress={() => { if (!openingRef.current) navigation.navigate("Voice", { patient: item }); }}
+              onCallPress={() => startPatientRecording(item)}
               onViewPress={() => openPatient(item)}
               isLoading={false}
               disabled={false}

@@ -33,7 +33,7 @@ function flow(options = {}) {
     navigate: (screen, params) => routes.push({ screen, params }),
     goBack: () => backEvents.push('back'),
     dispatch: (action) => backEvents.push(action),
-    addListener: (name) => { listeners.push(name); return () => {}; },
+    addListener: (name, callback) => { listeners.push({ name, callback }); return () => {}; },
   };
   const Component = loadApp('app/screens/voice/' + (options.transcript ? 'Transcription' : 'ViceRecorder') + '.tsx', mocks).default;
   const render = () => harness.render(() => Component({ navigation, route: { params: options.transcript ? { data: { patient, transcription: 'Synthetic release test', showChat: [] } } : { patient } } }));
@@ -68,10 +68,20 @@ test('back with a saved clip requires confirmation before leaving', async () => 
   assert.deepEqual(state.backEvents, ['back']);
 });
 
-test('recording screen does not block later navigation resets with a discard alert', () => {
+test('system back while recording confirms before dispatching the pending action', async () => {
   const state = flow();
   state.render();
-  assert.deepEqual(state.listeners, []);
+  const listener = state.listeners.find(({ name }) => name === 'beforeRemove');
+  assert.ok(listener);
+  let prevented = false;
+  const action = { type: 'GO_BACK' };
+  listener.callback({ preventDefault: () => { prevented = true; }, data: { action } });
+  assert.equal(prevented, true);
+  const dialog = findNodes(state.render(), (node) => node.type === 'Modal')[0];
+  assert.equal(dialog.props.visible, true);
+  findNodes(dialog, (node) => node.props?.accessibilityLabel === 'Discard recording')[0].props.onPress();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(state.backEvents, [action]);
 });
 
 test('a saved recording displays its file size', async () => {
