@@ -1,6 +1,6 @@
 import { useIsFocused } from "@react-navigation/native";
 import React, { useEffect, useState } from "react";
-import { Animated, Easing, StyleSheet, View } from "react-native";
+import { Animated, Easing, Platform, StyleSheet, View } from "react-native";
 import Svg, { Circle, Defs, Ellipse, LinearGradient, Path, RadialGradient, Rect, Stop } from "react-native-svg";
 
 export function RecordingBackdrop() {
@@ -79,7 +79,9 @@ function TranscriptionRing({ size, progress }: { size: number; stage: "sending" 
   const radius = Math.max(1, safeSize / 2 - 8);
   const circumference = 2 * Math.PI * radius;
   return <View style={styles.ring} accessibilityRole="progressbar" accessibilityLabel="Estimated transcription progress"
-    accessibilityValue={{ min: 0, max: 100, now: ringProgress }}>
+    accessibilityValue={Platform.OS === "web"
+      ? { text: `${Math.round(ringProgress)}%` }
+      : { min: 0, max: 100, now: ringProgress }}>
     <Svg width={safeSize} height={safeSize}>
       <Circle cx={safeSize / 2} cy={safeSize / 2} r={radius} stroke="#FFFFFF" strokeOpacity={0.15} strokeWidth={5} fill="none" />
       <Circle cx={safeSize / 2} cy={safeSize / 2} r={radius} stroke="#D7F5FF" strokeWidth={5} fill="none" strokeLinecap="round"

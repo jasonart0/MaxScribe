@@ -19,6 +19,7 @@ const HeaderTitle = ({ title = "", titleContent, showback = true, showlogout = t
 }) => {
   const navigation = useNavigation();
   const [userName, setUserName] = useState("");
+  const canGoBack = showback && navigation.canGoBack();
 
   useEffect(() => {
     let mounted = true;
@@ -38,7 +39,7 @@ const HeaderTitle = ({ title = "", titleContent, showback = true, showlogout = t
     <View style={styles.header}>
       <BlueGradient />
       <View style={styles.topBar}>
-        {showback ? (
+        {canGoBack ? (
           <TouchableOpacity
             accessibilityRole="button"
             accessibilityLabel="Go back"
