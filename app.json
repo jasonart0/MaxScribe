@@ -5,7 +5,7 @@
     "owner": "jasonart",
     "version": "1.0.1",
     "orientation": "portrait",
-    "icon": "./assets/images/adaptive-icon copy.png",
+    "icon": "./assets/images/icon.png",
     "scheme": "maxscribe",
     "userInterfaceStyle": "automatic",
     "ios": {
@@ -21,10 +21,13 @@
         "RECORD_AUDIO"
       ],
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon copy.png",
+        "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.maxremind.MaxScribeAI"
+    },
+    "web": {
+      "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
       [

@@ -73,7 +73,6 @@ export default function SplashScreens({ onComplete }: Props) {
           <View style={styles.topBar}>
             <View style={styles.brandRow}>
               <Image source={require("../../assets/images/brand-icon.png")} resizeMode="contain" style={styles.brandIcon} />
-              <Text style={styles.brand}>MaxScribe</Text>
             </View>
           </View>
           <Pressable accessibilityRole="button" accessibilityLabel={`Splash screen ${activeIndex + 1} of 3. Tap to continue.`}
@@ -124,9 +123,8 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   layout: { flex: 1, width: "100%", maxWidth: 560, alignSelf: "center", paddingHorizontal: 24 },
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 52 },
-  brandRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  brandIcon: { width: 30, height: 30, borderRadius: 8, overflow: "hidden" },
-  brand: { color: COLORS.deep, fontSize: 17, fontWeight: "700" },
+  brandRow: { alignItems: "flex-start" },
+  brandIcon: { width: 170, height: 57 },
   skip: { minHeight: 44, minWidth: 80, paddingHorizontal: 16, alignItems: "center", justifyContent: "center" },
   skipText: { color: COLORS.textLight, fontSize: 14 },
   content: { flex: 1, minHeight: 0 },

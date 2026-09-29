@@ -120,7 +120,6 @@ export default function LoginScreen({ navigation }: any) {
                   resizeMode="contain"
                   style={[styles.logo, isCompact && styles.logoCompact]}
                 />
-                <Text style={[styles.brandName, isCompact && styles.brandNameCompact]}>MaxScribe</Text>
               </View>
 
               <Text style={[styles.title, isCompact && styles.titleCompact]}>
@@ -287,11 +286,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: "rgba(218, 239, 255, 0.60)",
   },
-  brandRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  logo: { width: 43, height: 43, borderRadius: 11, overflow: "hidden" },
-  logoCompact: { width: 39, height: 39, borderRadius: 10 },
-  brandName: { color: INK, fontSize: 25, lineHeight: 31, fontWeight: "800", letterSpacing: -0.6 },
-  brandNameCompact: { fontSize: 23, lineHeight: 29 },
+  brandRow: { alignItems: "flex-start" },
+  logo: { width: 230, height: 77 },
+  logoCompact: { width: 200, height: 67 },
   title: {
     marginTop: 28,
     color: INK,
