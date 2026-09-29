@@ -77,6 +77,7 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
   const [historyError, setHistoryError] = useState(false);
   const [historyAttempt, setHistoryAttempt] = useState(0);
   const preparedRef = useRef(route?.params?.initialVisits !== undefined);
+  const hasLoadedRef = useRef(route?.params?.initialVisits !== undefined);
 
   useFocusEffect(useCallback(() => {
     if (!patient?.patient_id) return;
@@ -87,12 +88,15 @@ export default function PatientDetailsScreen({ route, navigation }: any) {
     }
 
     const loadHistory = async () => {
-      setLoading(true);
+      // Returning from a child screen should reveal the existing visit list
+      // immediately while its refresh continues unobtrusively.
+      setLoading(!hasLoadedRef.current);
       try {
         const response = await fetchPatientHistory(patient.patient_id);
         if (!cancelled) {
           setVisits(extractEncounters(response));
           setHistoryError(false);
+          hasLoadedRef.current = true;
         }
       } catch {
         if (!cancelled) setHistoryError(true);

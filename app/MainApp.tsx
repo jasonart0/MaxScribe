@@ -19,9 +19,11 @@ export default function MainApp() {
     <FlashMessage position="top" />
     <BottomSheetModalProvider>
       <NavigationContainer>
+        {/* Screen chrome already provides press feedback, so navigation can
+            reveal the previous screen as soon as the back action fires. */}
         <Stack.Navigator
           initialRouteName="Login"
-          screenOptions={{ headerShown: false, animation: "fade_from_bottom", animationDuration: 260, gestureEnabled: true }}
+          screenOptions={{ headerShown: false, animation: "none", gestureEnabled: true }}
         >
           <Stack.Screen name="Login" component={Login} />
           <Stack.Screen name="Home" component={Home} />

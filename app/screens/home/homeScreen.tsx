@@ -41,6 +41,7 @@ export default function HomeScreen({ navigation, route }: any) {
   const [loadError, setLoadError] = useState<string | null>(route?.params?.initialError ?? null);
   const openingRef = useRef(false);
   const preparedRef = useRef(route?.params?.initialPatients !== undefined);
+  const hasLoadedRef = useRef(route?.params?.initialPatients !== undefined);
   const requestId = useRef(0);
   const requestController = useRef<AbortController | null>(null);
   const debouncedSearch = useDebounce(search.trim(), 500);
@@ -50,7 +51,10 @@ export default function HomeScreen({ navigation, route }: any) {
     const controller = new AbortController();
     requestController.current = controller;
     const currentRequest = ++requestId.current;
-    setLoading(true);
+    // Keep the cached list visible when this screen is revealed by a back
+    // action. Only the very first load (or an explicit user action) blocks UI.
+    const shouldBlock = target !== "background" || !hasLoadedRef.current;
+    setLoading(shouldBlock);
     setSearching(target === "search");
     setRefreshing(target === "refresh");
     try {
@@ -64,6 +68,7 @@ export default function HomeScreen({ navigation, route }: any) {
       if (currentRequest === requestId.current) {
         setPatients(Array.isArray(data) ? data : []);
         setLoadError(null);
+        hasLoadedRef.current = true;
       }
     } catch (error) {
       if (currentRequest === requestId.current) {
