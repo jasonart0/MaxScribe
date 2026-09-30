@@ -26,7 +26,10 @@ function recording(options = {}) {
         web: { mimeType: 'audio/webm', bitsPerSecond: 128000 },
       },
     },
-    async requestRecordingPermissionsAsync() { calls.push('permission'); return { granted: options.permission !== false }; },
+    async requestRecordingPermissionsAsync() {
+      calls.push('permission');
+      return { granted: options.permission !== false, canAskAgain: options.canAskAgain };
+    },
     async setAudioModeAsync(mode) { calls.push(mode); },
     useAudioRecorder(value, callback) { preset = value; listener = callback; return recorder; },
     useAudioRecorderState() { return { durationMillis: duration, metering: -20 }; },
@@ -40,7 +43,7 @@ function recording(options = {}) {
     'expo-audio': expo,
     'expo-keep-awake': keepAwake,
   });
-  return { get: (bitRate) => harness.render(() => useVoiceRecorder(bitRate)), calls, recorder, preset: () => preset, unmount: harness.unmount, notify: (status) => listener(status) };
+  return { get: (bitRate, onPermissionBlocked) => harness.render(() => useVoiceRecorder(bitRate, onPermissionBlocked)), calls, recorder, preset: () => preset, unmount: harness.unmount, notify: (status) => listener(status) };
 }
 
 test('recording uses transcription-compatible mono AAC audio', async () => {
@@ -75,6 +78,18 @@ test('permission denial does not start a fake recording', async () => {
   assert.equal(await state.get().startRecording(), false);
   assert.equal(state.get().isRecording, false);
   assert.match(state.get().recordingError, /microphone/);
+  assert.equal(state.calls.includes('record'), false);
+});
+
+test('a permanently denied microphone permission offers the Settings fallback on every tap', async () => {
+  const state = recording({ permission: false, canAskAgain: false });
+  let settingsPrompts = 0;
+  const onPermissionBlocked = () => { settingsPrompts += 1; };
+
+  assert.equal(await state.get(undefined, onPermissionBlocked).startRecording(), false);
+  assert.equal(await state.get(undefined, onPermissionBlocked).startRecording(), false);
+  assert.equal(settingsPrompts, 2);
+  assert.equal(state.calls.filter((call) => call === 'permission').length, 2);
   assert.equal(state.calls.includes('record'), false);
 });
 

@@ -12,7 +12,7 @@ import { Asset } from "expo-asset";
 import { getInfoAsync } from "expo-file-system/legacy";
 import { useVoiceRecorder } from "hooks/useAudioRecording";
 import * as React from "react";
-import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from "react-native";
+import { Alert, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from "react-native";
 import type { ScreenProps } from "types/navigation";
 
 type Clip = { id: number; uri: string; duration: number; size?: number; transcript?: string };
@@ -65,8 +65,18 @@ export default function VoiceRecordScreen({ navigation, route }: ScreenProps<"Vo
   const processingRef = React.useRef(false);
   const [recordingBitRate, setRecordingBitRate] = React.useState<RecordingBitRate>(16000);
   const [qualityMenuOpen, setQualityMenuOpen] = React.useState(false);
+  const showMicrophoneSettings = React.useCallback(() => {
+    Alert.alert(
+      "Microphone Access Required",
+      "Recording needs microphone access. Enable Microphone for MaxScribe in Settings, then try again.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Open Settings", onPress: () => { void Linking.openSettings(); } },
+      ],
+    );
+  }, []);
   const { isRecording, isPaused, isBusy, recordingError, timer, metering, formatTime,
-    startRecording, pauseRecording, resumeRecording, stopRecording } = useVoiceRecorder(recordingBitRate);
+    startRecording, pauseRecording, resumeRecording, stopRecording } = useVoiceRecorder(recordingBitRate, showMicrophoneSettings);
   const [discardDialogVisible, setDiscardDialogVisible] = React.useState(false);
   const [discarding, setDiscarding] = React.useState(false);
   const allowNavigationRef = React.useRef(false);

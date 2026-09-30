@@ -287,8 +287,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(218, 239, 255, 0.60)",
   },
   brandRow: { alignItems: "flex-start" },
-  logo: { width: 230, height: 77 },
-  logoCompact: { width: 200, height: 67 },
+  logo: { width: 96, height: 96 },
+  logoCompact: { width: 80, height: 80 },
   title: {
     marginTop: 28,
     color: INK,

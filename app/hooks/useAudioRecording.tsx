@@ -38,7 +38,7 @@ const createCompressedSpeechPreset = (bitRate: number) => ({
   },
 });
 
-export const useVoiceRecorder = (bitRate = 48000) => {
+export const useVoiceRecorder = (bitRate = 48000, onPermissionBlocked?: () => void) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
@@ -76,7 +76,12 @@ export const useVoiceRecorder = (bitRate = 48000) => {
     setRecordingError(null);
     try {
       const permission = await requestRecordingPermissionsAsync();
-      if (!permission.granted) throw new Error("Allow microphone access to record audio.");
+      if (!permission.granted) {
+        // iOS will not show its native prompt again after the user denies it.
+        // Let the screen offer a direct route to the app's Settings instead.
+        if (permission.canAskAgain === false) onPermissionBlocked?.();
+        throw new Error("Allow microphone access to record audio.");
+      }
       await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
       await recorder.prepareToRecordAsync();
       setCompletedDuration(0);
@@ -94,7 +99,7 @@ export const useVoiceRecorder = (bitRate = 48000) => {
       busyRef.current = false;
       setIsBusy(false);
     }
-  }, [recorder]);
+  }, [onPermissionBlocked, recorder]);
 
   const pauseRecording = async () => {
     if (busyRef.current || !sessionRef.current) return;

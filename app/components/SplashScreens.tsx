@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
   layout: { flex: 1, width: "100%", maxWidth: 560, alignSelf: "center", paddingHorizontal: 24 },
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 52 },
   brandRow: { alignItems: "flex-start" },
-  brandIcon: { width: 170, height: 57 },
+  brandIcon: { width: 80, height: 80 },
   skip: { minHeight: 44, minWidth: 80, paddingHorizontal: 16, alignItems: "center", justifyContent: "center" },
   skipText: { color: COLORS.textLight, fontSize: 14 },
   content: { flex: 1, minHeight: 0 },
